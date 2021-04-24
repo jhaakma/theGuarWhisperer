@@ -542,6 +542,20 @@ local function onGuarAttack(e)
     end 
 end
 
+--[[
+    For guars from an old update, transfer them to new data table
+]]
+local function convertOldGuar(e)
+    if tes3.player.data.theGuarWhisperer
+        and tes3.player.data.theGuarWhisperer.companions
+        and tes3.player.data.theGuarWhisperer.companions[e.reference.id]
+    then
+        e.reference.data.tgw = tes3.player.data.theGuarWhisperer.companions[e.reference.id]
+        tes3.player.data.theGuarWhisperer.companions[e.reference.id] = nil
+    end
+end
+event.register("referenceActivated", convertOldGuar)
+
 local function initialised()
     if tes3.isModActive("TheGuarWhisperer.ESP") then
         require("mer.theGuarWhisperer.AI")
