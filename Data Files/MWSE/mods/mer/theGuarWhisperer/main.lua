@@ -546,7 +546,9 @@ end
     For guars from an old update, transfer them to new data table
 ]]
 local function convertOldGuar(e)
-    if tes3.player.data.theGuarWhisperer
+    if  tes3.player
+        and tes3.player.data
+        and tes3.player.data.theGuarWhisperer
         and tes3.player.data.theGuarWhisperer.companions
         and tes3.player.data.theGuarWhisperer.companions[e.reference.id]
     then
@@ -554,7 +556,20 @@ local function convertOldGuar(e)
         tes3.player.data.theGuarWhisperer.companions[e.reference.id] = nil
     end
 end
-event.register("referenceActivated", convertOldGuar)
+
+local function clearActionData(e)
+    if e.reference.data 
+        and e.reference.data.tgw 
+        and e.reference.data.tgw.takingAction
+    then
+        e.reference.data.tgw.takingAction = nil
+    end
+end
+
+local function initGuar(e)
+    convertOldGuar(e)
+    clearActionData(e)
+end
 
 local function initialised()
     if tes3.isModActive("TheGuarWhisperer.ESP") then
@@ -563,8 +578,6 @@ local function initialised()
         require("mer.theGuarWhisperer.merchantInventory")
         require("mer.theGuarWhisperer.CommandMenu.commandMenuController")
         require("mer.theGuarWhisperer.tooltips")
-
-
         event.register("activate", activateAnimal)
         event.register("equip", onEquipWhistle)
         event.register("uiObjectTooltip", onTooltip)
@@ -576,7 +589,14 @@ local function initialised()
         event.register("combatStopped", onCombatEnd)
         event.register("attack", onGuarAttack)
         common.log:info("[The Guar Whisperer] initialised")
+        event.register("mobileActivated", initGuar)
+        event.register("loaded", function()
+            for i, cell in ipairs(tes3.getActiveCells()) do
+                for ref in cell:iterateReferences(tes3.objectType.creature) do
+                    initGuar({ reference = ref})
+                end
+            end
+        end)
     end
 end
-
 event.register("initialized", initialised)

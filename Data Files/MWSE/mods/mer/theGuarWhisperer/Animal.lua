@@ -2140,9 +2140,18 @@ end
 
 
 function Animal:activate()
-    if not self:isActive() then return end
-    if self:isDead() then return end
-    if not self.reference.mobile.hasFreeAction then return end
+    if not self:isActive() then 
+        common.log:trace("not active")
+        return 
+    end
+    if self:isDead() then 
+        common.log:trace("guar is dead")
+        return 
+    end
+    if not self.reference.mobile.hasFreeAction then 
+        common.log:trace("no free action")
+        return 
+    end
     --Allow regular activation for dialog/companion share
     if self.refData.triggerDialog == true then
         common.log:debug("triggerDialog true, entering companion share")
@@ -2150,6 +2159,7 @@ function Animal:activate()
         return
     --Block activation if issuing a command
     elseif common.data.skipActivate then
+        common.log:trace("skipActivate")
         common.data.skipActivate = false
         return false
     --Otherwise trigger custom activation
@@ -2158,12 +2168,15 @@ function Animal:activate()
             self.refData.commandActive = false
             self:handOverItems()
             self:restorePreviousAI()
-
         elseif self.refData.commandActive then
+            common.log:trace("command is active")
             self.refData.commandActive = false
         else
             if self:canTakeAction() then
+                common.log:trace("showing command menu")
                 event.trigger("TheGuarWhisperer:showCommandMenu", { animal = self })
+            else
+                common.log:trace("can't take action")
             end
         end
         return false
