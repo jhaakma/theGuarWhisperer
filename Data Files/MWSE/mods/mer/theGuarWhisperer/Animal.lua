@@ -37,19 +37,6 @@ Animal.pickableRotations = {
 ---------------------
 --Internal methods
 ---------------------
-local function traverse(roots)
-    local function iter(nodes)
-        for _, node in ipairs(nodes or roots) do
-            if node then
-                coroutine.yield(node)
-                if node.children then
-                    iter(node.children)
-                end
-            end
-        end
-    end
-    return coroutine.wrap(iter)
-end
 
 
 local function initialiseRefData(reference)
@@ -675,7 +662,7 @@ function Animal:putItemInMouth(object)
     --Due to orientation of ponytail bone, item is already rotated 90 degrees
     Animal.removeLight(itemNode)
     --remove collision
-    for node in traverse{itemNode} do
+    for node in table.traverse{itemNode} do
         if node:isInstanceOfType(tes3.niType.RootCollisionNode) then
             node.appCulled = true
         end
@@ -802,6 +789,7 @@ end
 
 function Animal:eatFromWorld(target)
     if target.object.objectType == tes3.objectType.container then
+
         self:harvestItem(target)
         if not self.refData.carriedItems then 
             tes3.messageBox("%s wasn't unable to get any nutrition from the %s", self.refData.name, target.object.name)
@@ -822,6 +810,7 @@ function Animal:eatFromWorld(target)
         tes3.playSound{ reference = self.reference, sound = "Item Ingredient Up" }
         tes3.messageBox("%s eats the %s", self.refData.name, target.object.name)
     elseif target.object.objectType == tes3.objectType.ingredient then
+
         self:pickUpItem(target) 
         local foodAmount = self.animalData.foodList[string.lower(target.object.id)]
         self:processFood(foodAmount)
@@ -833,10 +822,12 @@ function Animal:eatFromWorld(target)
         tes3.messageBox("%s eats the %s", self.refData.name, target.object.name)
     end
 
+    local itemId = target.object.id
     timer.start{
         type = timer.simulate,
         duration = 1,
         callback = function()
+            event.trigger("GuarWhisperer:AteFood", { reference = self.reference, itemId = itemId } )
             self:removeItemsFromMouth()
             self.refData.carriedItems = nil
         end
@@ -845,6 +836,7 @@ end
 
 
 function Animal:eatFromInventory(item, itemData)
+    event.trigger("GuarWhisperer:EatFromInventory", { item = item, itemData = itemData })
     --remove food from player
     tes3.player.object.inventory:removeItem{
         mobile = tes3.mobilePlayer,
@@ -858,9 +850,11 @@ function Animal:eatFromInventory(item, itemData)
     --visuals/sound
     self:playAnimation("eat")
     self:takeAction(2)
+    local itemId = item.id
     timer.start{
         duration = 1,
-        callback = function() 
+        callback = function()
+            event.trigger("GuarWhisperer:AteFood", { reference = self.reference, itemId = itemId }  )
             tes3.playSound{ reference = self.reference, sound = "Swallow" } 
             tes3.messageBox(
                 "%s gobbles up the %s.",
@@ -1888,7 +1882,7 @@ end
 
 function Animal.removeLight(lightNode) 
 
-    for node in traverse{lightNode} do
+    for node in table.traverse{lightNode} do
         --Kill particles
         if node.RTTI.name == "NiBSParticleNode" then
             --node.appCulled = true
