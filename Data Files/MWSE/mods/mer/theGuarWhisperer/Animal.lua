@@ -822,7 +822,7 @@ function Animal:eatFromWorld(target)
         tes3.messageBox("%s eats the %s", self.refData.name, target.object.name)
     end
 
-    local itemId = target.object.id
+    local itemId = target.baseObject.id
     timer.start{
         type = timer.simulate,
         duration = 1,
