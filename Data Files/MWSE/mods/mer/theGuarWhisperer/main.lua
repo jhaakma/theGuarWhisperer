@@ -12,7 +12,6 @@
 ]]
 require("mer.theGuarWhisperer.MCM")
 
-
 local animalController = require("mer.theGuarWhisperer.animalController")
 local commandMenu = require("mer.theGuarWhisperer.CommandMenu.CommandMenuModel")
 local ui = require("mer.theGuarWhisperer.ui")
@@ -35,7 +34,6 @@ local function getAnimalData(reference)
 end
 
 local function activateAnimal(e)
-
     common.log:trace("activateAnimal(): Activating %s", e.target.object.id)
     if not common.getModEnabled() then 
         common.log:trace("activateAnimal(): mod is disabled")
