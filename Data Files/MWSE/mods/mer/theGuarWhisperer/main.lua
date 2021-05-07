@@ -580,6 +580,7 @@ local function getVersion()
 end
 
 local function initialised()
+    
     if tes3.isModActive("TheGuarWhisperer.ESP") then
         require("mer.theGuarWhisperer.AI")
         require("mer.theGuarWhisperer.fetch") 
