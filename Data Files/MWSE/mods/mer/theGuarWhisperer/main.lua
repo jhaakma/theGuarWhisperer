@@ -131,8 +131,6 @@ local function activateAnimal(e)
         end
     end
 end
-
-
 local function onEquipWhistle(e)
     if not common.getModEnabled() then 
         common.log:trace("activateWhistle(): Mod disabled")
@@ -200,7 +198,6 @@ local function isAffectedBySpellType(mobile, spellType)
         end
     end
 end
-
 
 local function onTooltip(e)
     if not common.getModEnabled() then return end
@@ -277,7 +274,6 @@ local function findGreetable(animal)
             end
         end
     end 
-
     for ref in animal.reference.cell:iterateReferences(tes3.objectType.npc) do
         local isHappyNPC = (
             ref.mobile and 
