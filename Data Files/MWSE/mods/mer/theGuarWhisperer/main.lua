@@ -571,6 +571,16 @@ local function initGuar(e)
     clearActionData(e)
 end
 
+local function getVersion()
+    local versionFile = io.open("Data Files/MWSE/mods/mer/theGuarWhisperer/version.txt", "r")
+    local version = ""
+    for line in versionFile:lines() do -- Loops over all the lines in an open text file
+        version = line
+    end
+    return version
+end
+
+
 local function initialised()
     if tes3.isModActive("TheGuarWhisperer.ESP") then
         require("mer.theGuarWhisperer.AI")
@@ -588,7 +598,7 @@ local function initialised()
         event.register("combatStart", onCombatStart)
         event.register("combatStopped", onCombatEnd)
         event.register("attack", onGuarAttack)
-        common.log:info("[The Guar Whisperer] initialised")
+        common.log:info("%s Initialised", getVersion())
         event.register("mobileActivated", initGuar)
         event.register("loaded", function()
             for i, cell in ipairs(tes3.getActiveCells()) do

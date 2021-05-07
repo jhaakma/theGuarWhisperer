@@ -224,10 +224,11 @@ end
 function Animal:playAnimation(emotionType, wait)
     local groupId = animalConfig.idles[emotionType]
     if tes3.animationGroup[groupId] ~= nil then
+        common.log:debug("playing %s, wait: %s", groupId, wait)
         tes3.playAnimation{
             reference = self.reference,
             group = tes3.animationGroup[groupId],
-            loopCount = 1,
+            loopCount = 2,
             startFlag = wait and tes3.animationStartFlag.normal or tes3.animationStartFlag.immediate
         }
     end
@@ -1533,6 +1534,7 @@ end
 
 
 function Animal:pet()
+    common.log:debug("Petting")
     self:modAffection(30)
     tes3.messageBox(self:getMood("affection").pettingResult(self) )
     self:playAnimation("pet")

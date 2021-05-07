@@ -244,7 +244,7 @@ function this.messageBox(params)
 end
 
 function this.yeet(reference)
-    reference.sceneNode.appCulled = theGuarWhisperer
+    reference.sceneNode.appCulled = true
     tes3.positionCell{
         reference = reference, 
         position = { 0, 0, 0, },
