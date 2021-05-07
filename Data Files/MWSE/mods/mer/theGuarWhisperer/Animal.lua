@@ -37,7 +37,6 @@ Animal.pickableRotations = {
 ---------------------
 --Internal methods
 ---------------------
-
 local function initialiseRefData(reference)
 
     if reference.data.tgw then return reference.data.tgw end
