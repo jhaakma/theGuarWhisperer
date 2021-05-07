@@ -132,7 +132,6 @@ local function activateAnimal(e)
     end
 end
 
-
 local function onEquipWhistle(e)
 
     if not common.getModEnabled() then 
