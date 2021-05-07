@@ -288,7 +288,6 @@ local function findGreetable(animal)
             end
         end
     end
-
 end
 
 
@@ -314,7 +313,6 @@ local function randomActTimer()
                                 return false
                             end
                         end
-
                         --check for other guar
                         local guar = findGreetable(animal)
                         if guar then 
@@ -322,7 +320,6 @@ local function randomActTimer()
                             animal:moveToAction(guar, "greet", true)
                             return false
                         end
-
                         if math.random(100) < 20 then
                             common.log:debug("randomActTimer: Guar running")
                             animal.reference.mobile.isRunning = true
