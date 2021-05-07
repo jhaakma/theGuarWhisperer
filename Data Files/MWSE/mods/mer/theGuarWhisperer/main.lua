@@ -533,7 +533,6 @@ local function onCombatEnd(e)
     end
 end
 
-
 local function onGuarAttack(e)
     local animal = animalController.getAnimal(e.reference)
     if animal then
@@ -579,7 +578,6 @@ local function getVersion()
     end
     return version
 end
-
 
 local function initialised()
     if tes3.isModActive("TheGuarWhisperer.ESP") then
