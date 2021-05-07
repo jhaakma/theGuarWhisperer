@@ -133,9 +133,6 @@ local function activateAnimal(e)
 end
 
 
-
-
-
 local function onEquipWhistle(e)
     if not common.getModEnabled() then 
         common.log:trace("activateWhistle(): Mod disabled")
