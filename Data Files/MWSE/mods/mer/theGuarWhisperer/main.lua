@@ -133,7 +133,6 @@ local function activateAnimal(e)
 end
 
 local function onEquipWhistle(e)
-
     if not common.getModEnabled() then 
         common.log:trace("activateWhistle(): Mod disabled")
         return 
@@ -141,12 +140,10 @@ local function onEquipWhistle(e)
     if not ( e.item.id == common.fluteId ) then
         common.log:trace("activateWhistle(): Activated item not a whistle: %s", e.item.id)
     else
-
         common.log:trace("activateWhistle(): Found a whistle. Leaving menu mode: %s", e.item.id)
         tes3ui.leaveMenuMode()
         timer.delayOneFrame(function()
             local buttons = {}
-
             if tes3.player.cell.isInterior ~= true then
                 common.iterateRefType("companion", function(ref)
                     local animal = animalController.getAnimal(ref)
