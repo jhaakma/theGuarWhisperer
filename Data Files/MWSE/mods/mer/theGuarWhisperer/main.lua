@@ -18,7 +18,7 @@ local commandMenu = require("mer.theGuarWhisperer.CommandMenu.CommandMenuModel")
 local ui = require("mer.theGuarWhisperer.ui")
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
 local common = require("mer.theGuarWhisperer.common")
-local interop = require("mer.theGuarWhisperer.interop")
+require("mer.theGuarWhisperer.interop")
 
 local function getAnimalData(reference)
     if not reference then return false end
