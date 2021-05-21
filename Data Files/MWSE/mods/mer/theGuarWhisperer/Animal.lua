@@ -226,7 +226,7 @@ function Animal:playAnimation(emotionType, wait)
         tes3.playAnimation{
             reference = self.reference,
             group = tes3.animationGroup[groupId],
-            loopCount = 2,
+            loopCount = 0,
             startFlag = wait and tes3.animationStartFlag.normal or tes3.animationStartFlag.immediate
         }
     end
