@@ -11,6 +11,7 @@
 
 ]]
 require("mer.theGuarWhisperer.MCM")
+require("mer.theGuarWhisperer.quickkeys")
 
 local animalController = require("mer.theGuarWhisperer.animalController")
 local commandMenu = require("mer.theGuarWhisperer.CommandMenu.CommandMenuModel")

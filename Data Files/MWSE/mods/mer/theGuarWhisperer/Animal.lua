@@ -306,7 +306,13 @@ function Animal:teleportToPlayer(distance)
     target.sceneNode.appCulled = true
     local rayResult = tes3.rayTest{
         position = target.position,
-        direction = target.sceneNode.rotation:transpose().y * (isForward and 1 or -1),
+        direction = {
+            0,
+            0,
+            isForward and 
+                target.sceneNode.worldTransform.rotation.z or 
+                (target.sceneNode.worldTransform.rotation.z * -1)
+        },
         maxDistance = math.abs(distance),
         ignore = {target, self.reference}
     }
@@ -321,7 +327,7 @@ function Animal:teleportToPlayer(distance)
     if rayResult and rayResult.intersection then
         common.log:debug(
             "Teleport blocked by %s, new distance: %s",  
-            rayResult.object.name,
+            rayResult.object,
             rayResult.intersection:distance(target.position)
         )
         local intersectionDistance = tes3.player.position:distance(rayResult.intersection)
