@@ -26,9 +26,7 @@ local function registerMcm()
             "If your guar gets lost, you can purchase a guar flute that, when played, will summon your guar back to you." ..
             "Flutes, packs, and toys can be purchased from Arrille, Ra'virr, as well as various other outfitters and traders. \n\n" ..
 
-            "If you have Ashfall installed, camping gear will display on your guar's pack when added to its inventory. " ..
-            "Ashfall is a camping survival mod currently in development. Go to the Morrowind Modding Community Discord to " ..
-            "get the alpha version."
+            "If you have Ashfall installed, camping gear will display on your guar's pack when added to its inventory. "
         )
         descriptionCategory:createInfo{
             text = sidebarText
