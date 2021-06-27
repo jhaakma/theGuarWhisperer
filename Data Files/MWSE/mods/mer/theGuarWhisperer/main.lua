@@ -189,7 +189,6 @@ end
 
 local function isAffectedBySpellType(mobile, spellType)
     for _, activeEffect in pairs(mobile.activeMagicEffectList) do
-        activeEffect = activeEffect.next
         local instance = activeEffect.instance
         if instance then
             if instance.source.castType == spellType then
