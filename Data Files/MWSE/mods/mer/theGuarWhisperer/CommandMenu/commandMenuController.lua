@@ -153,6 +153,7 @@ event.register("keyDown", onKeyPress)
 
 local function onMouseWheelChanged(e)
     if not common.data then return end
+    if tes3ui.menuMode() then return end
     if commandMenu.activeCompanion then
         if e.delta < 0 then
             commandMenu:scrollUp()
