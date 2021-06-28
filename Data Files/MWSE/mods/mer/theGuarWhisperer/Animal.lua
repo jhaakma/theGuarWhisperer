@@ -1096,13 +1096,13 @@ function Animal:modTrust(amount)
             end)
         end
     end
-    tes3ui.refreshTooltip()
+    --tes3ui.refreshTooltip()
     return self.refData.trust
 end
 
 function Animal:modPlay(amount)
     self.refData.play = math.clamp(self.refData.play + amount, 0, 100)
-    tes3ui.refreshTooltip()
+    --tes3ui.refreshTooltip()
     return self.refData.play
 end
 
@@ -1123,7 +1123,7 @@ function Animal:modHunger(amount)
         tes3.messageBox("%s is %s.", self.refData.name, newMood.description)
     end
 
-    tes3ui.refreshTooltip()
+    --tes3ui.refreshTooltip()
 end
 
 function Animal:getMood(moodType)
@@ -1174,7 +1174,7 @@ function Animal:updateHappiness()
 
     local newHappiness = hunger + comfort + affection + play + trust 
     self.refData.happiness = newHappiness
-    tes3ui.refreshTooltip()
+    --tes3ui.refreshTooltip()
 end
 
 
