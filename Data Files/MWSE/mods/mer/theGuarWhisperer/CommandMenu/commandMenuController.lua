@@ -85,7 +85,7 @@ local function grabFromPack(animal)
                                 if inventory:contains(itemId) then
                                     common.log:debug("Found %s in inventory", itemId)
                                     for stack in tes3.iterate(inventory.iterator) do
-                                        if stack.object.id == itemId then
+                                        if stack.object.id:lower() == itemId:lower() then
                                             local count = stack.count
                                             local itemData
                                             if stack.variables and #stack.variables > 0 then
