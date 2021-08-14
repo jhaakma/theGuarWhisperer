@@ -16,7 +16,7 @@ jobs:
       - name: Build Project
         uses: edgarrc/action-7z@v1
         with:
-          args: 7z a TheGuarWhisperer.7z ./Data\ Files/
+          args: 7z a TheGuarWhisperer.7z "Data Files"
 
       - name: Create Release
         uses: notlmn/release-with-changelog@v2
