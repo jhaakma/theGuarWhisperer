@@ -233,7 +233,6 @@ local function guarTimer()
                 
                 animal:updateAI()
                 animal:updateTravelSpells()
-                animal:fixSoundBug()
             end
             animal:updateMood()
             animal:updateCloseDistance()
