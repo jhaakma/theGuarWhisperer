@@ -9,50 +9,49 @@ this.idles = {
         sad = "idle3"
 }
 
----@class GuarWhisperer.AnimalData.lvl
+---@class GuarWhisperer.AnimalType.lvl
 ---@field fetchProgress number
 ---@field attackProgress number
 
----@class GuarWhisperer.AnimalData.hunger
+---@class GuarWhisperer.AnimalType.hunger
 ---@field changePerHour number
 
----@class GuarWhisperer.AnimalData.play
+---@class GuarWhisperer.AnimalType.play
 ---@field changePerHour number
 ---@field fetchValue number
 ---@field greetValue number
 
----@class GuarWhisperer.AnimalData.affection
+---@class GuarWhisperer.AnimalType.affection
 ---@field changePerHour number
 ---@field petValue number
 
----@class GuarWhisperer.AnimalData.trust
+---@class GuarWhisperer.AnimalType.trust
 ---@field maxDistance number
 ---@field changePerHour number
 ---@field babyLevel number
 
----@class GuarWhisperer.AnimalData.reqs
+---@class GuarWhisperer.AnimalType.reqs
 ---@field pack number
 ---@field follow number
 
----@class GuarWhisperer.AnimalData
+---@class GuarWhisperer.AnimalType
 ---@field type string
 ---@field mutation number
 ---@field birthIntervalHours number
 ---@field babyScale number
 ---@field hoursToMature number
----@field lvl GuarWhisperer.AnimalData.lvl
----@field hunger GuarWhisperer.AnimalData.hunger
----@field play GuarWhisperer.AnimalData.play
----@field affection GuarWhisperer.AnimalData.affection
----@field trust GuarWhisperer.AnimalData.trust
----@field reqs GuarWhisperer.AnimalData.reqs
+---@field lvl GuarWhisperer.AnimalType.lvl
+---@field hunger GuarWhisperer.AnimalType.hunger
+---@field play GuarWhisperer.AnimalType.play
+---@field affection GuarWhisperer.AnimalType.affection
+---@field trust GuarWhisperer.AnimalType.trust
+---@field reqs GuarWhisperer.AnimalType.reqs
 ---@field breedable boolean
 ---@field tameable boolean
----@field foodList table<string, number>
+---@field foodList table<string, number|boolean>
 
-
+---@type table<string, GuarWhisperer.AnimalType>
 this.animals = {
-
     guar = {
         type = "guar",
         mutation = 10,
@@ -87,7 +86,6 @@ this.animals = {
         breedable = true,
         tameable = true,
         foodList = {
-
             ["ingred_corkbulb_root_01"] = 50,
             ["ingred_chokeweed_01"] = 40,
             ["ingred_kresh_fiber_01"] = 40,
@@ -116,7 +114,6 @@ this.animals = {
             ["flora_rm_scathecraw_02"] = true,
         },
     },
-
 }
 
 this.greetableGuars = {
@@ -128,19 +125,20 @@ this.greetableGuars = {
     ["mer_tgw\\guar_tame_w.nif"] = true
 }
 
+---@class GuarWhisperer.ConvertData.extra
+---@field hasPack boolean
+---@field canHavePack boolean
+---@field color "standard" | "white"
+
+---@class GuarWhisperer.ConvertData
+---@field type GuarWhisperer.AnimalType
+---@field extra GuarWhisperer.ConvertData.extra
+
 --Meshes to allow to turn into switch guar
+---@type table<string, GuarWhisperer.ConvertData>
 this.meshes = {
-    -- ["mdfg\\fabricant_guar.nif"] = {
-    --     type  = this.animals.guar,
-    --     extra = {
-    --         hasPack = false,
-    --         canHavePack = false,
-    --         color = "fabricant",
-    --         foodList = { ["ingred_scrap_metal_01"] = 40}
-    --     }
-    -- },
     ["r\\guar.nif"] = {
-        type  = this.animals.guar,
+        type = this.animals.guar,
         extra = {
             hasPack = false,
             canHavePack = true,
@@ -155,23 +153,6 @@ this.meshes = {
             color = "white"
         }
     },
-    -- },
-    -- ["r\\guar_withpack.nif"] = {
-    --     type  = this.animals.guar,
-    --     extra = {
-    --         hasPack = true,
-    --         canHavePack = true,
-    --         color = "standard"
-    --     }
-    -- },
-    -- ["tr\\cr\\guar_withharness.nif"] = {
-    --     type  = this.animals.guar,
-    --     extra = {
-    --         hasPack = true,
-    --         canHavePack = true,
-    --         color = "standard" A
-    --     }
-    -- },
 }
 
 this.guarMapper = {

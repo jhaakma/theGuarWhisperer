@@ -21,19 +21,6 @@ local animalConfig = require("mer.theGuarWhisperer.animalConfig")
 local common = require("mer.theGuarWhisperer.common")
 require("mer.theGuarWhisperer.interop")
 
-local function getAnimalData(reference)
-    if not reference then return false end
-    if not reference.mobile then return false end
-    if not (reference.object.objectType == tes3.objectType.creature) then return false end
-    local crMesh = reference.object.mesh:lower()
-    common.log:trace("getAnimalData(): Mesh path: %s", crMesh)
-    local typeData = animalConfig.meshes[crMesh]
-    if typeData then
-        return typeData
-    else
-        return false
-    end
-end
 
 local function activateAnimal(e)
     common.log:trace("activateAnimal(): Activating %s", e.target.object.id)
@@ -68,8 +55,8 @@ local function activateAnimal(e)
             common.log:trace("activateAnimal(): %s is dead", e.target.object.id)
             return
         end
-        local animalData = getAnimalData(e.target)
-        if not animalData then
+        local convertData = AnimalConverter.getConvertData(e.target)
+        if not convertData then
             common.log:trace("activateAnimal(): Failed to get animal data for %s", e.target.object.id)
         else
             local foodId
@@ -90,7 +77,7 @@ local function activateAnimal(e)
                         {
                             text = string.format("Give the %s some %s", e.target.object.name, food.name),
                             callback = function()
-                                local newAnimal = AnimalConverter.convert(e.target, animalData)
+                                local newAnimal = AnimalConverter.convert(e.target, convertData)
                                 if not newAnimal then
                                     common.log:error("Failed to convert guar")
                                     return

@@ -65,7 +65,7 @@
 ---@field reference tes3reference
 ---@field mobile tes3mobileCreature
 ---@field object tes3object
----@field animalData GuarWhisperer.AnimalData
+---@field animalType GuarWhisperer.AnimalType
 ---@field attributes table<string, number>
 ---@field stats GuarWhisperer.Stats
 ---@field aiFixer GuarWhisperer.AIFixer
@@ -159,15 +159,6 @@ local function isValidRef(reference)
     return true
 end
 
-local function getAnimalData()
-    local animalData = animalConfig.animals.guar
-    if not animalData then
-        logger:debug("No animalConfig found")
-        return false
-    end
-    return animalData
-end
-
 ---------------------
 --Class methods
 ---------------------
@@ -182,19 +173,61 @@ function Animal.get(reference)
     return Animal:new(reference)
 end
 
+---Get the animal type and extra data for a given vanilla
+--- guar reference.
+---@return GuarWhisperer.ConvertData?
+function Animal.getConvertData(reference)
+    logger:trace("Get convert data")
+    if not reference then
+        logger:trace("No reference")
+        return nil
+    end
+    if not reference.mobile then
+        logger:trace("No mobile")
+        return nil
+    end
+    if not (reference.object.objectType == tes3.objectType.creature) then
+        logger:trace("Not a creature")
+        return nil
+    end
+    local crMesh = reference.object.mesh:lower()
+    logger:trace("Finding type for mesh %s", crMesh)
+    local typeData = animalConfig.meshes[crMesh]
+    if typeData then
+        return typeData
+    else
+        logger:trace("No type data")
+        return nil
+    end
+end
+
+--- Get the animal type for a converter guar
+---@param reference tes3reference
+---@return GuarWhisperer.AnimalType?
+function Animal.getAnimalType(reference)
+    return animalConfig.animals.guar
+end
+
 
 --- Construct a new Animal
 ---@param reference tes3reference
 ---@return GuarWhisperer.Animal|nil
 function Animal:new(reference)
-    if not isValidRef(reference) then return end
-    local animalData = getAnimalData()
-    if not animalData then return end
+    logger:trace("Animal:new")
+    if not isValidRef(reference) then
+        logger:trace("Not valid")
+        return
+    end
+    local animalType = Animal.getAnimalType(reference)
+    if not animalType then
+        logger:trace("No animal type")
+        return
+    end
     local newAnimal = {
         reference = reference,
         object = reference.object,
         mobile = reference.mobile,
-        animalData = animalData,
+        animalType = animalType,
         refData = initialiseRefData(reference),
     }
     newAnimal.stats = Stats.new(newAnimal)
@@ -533,7 +566,7 @@ function Animal:moveToAction(reference, command, noMessage)
                     if command == "eat" then
                         self:playAnimation("eat")
                     elseif command == "greet" then
-                        self:modPlay(self.animalData.play.greetValue)
+                        self:modPlay(self.animalType.play.greetValue)
                         self:playAnimation("pet")
                         tes3.playAnimation{
                             reference = reference,
@@ -583,7 +616,7 @@ function Animal:moveToAction(reference, command, noMessage)
                                 duration = duration,
                                 callback = function()
                                     if command == "fetch" or command == "harvest" then
-                                        self.stats:progressLevel(self.animalData.lvl.fetchProgress)
+                                        self.stats:progressLevel(self.animalType.lvl.fetchProgress)
                                         self:returnTo()
                                     else
                                         logger:debug("Previous AI: %s", self.refData.previousAiState)
@@ -717,7 +750,7 @@ function Animal:canEat(ref)
     if ref.isEmpty then
         return false
     end
-    return self.animalData.foodList[string.lower(ref.object.id)]
+    return self.animalType.foodList[string.lower(ref.object.id)]
 end
 
 function Animal:canHarvest(reference)
@@ -929,7 +962,7 @@ function Animal:eatFromWorld(target)
                 count = item.count,
                 playSound = false
             }
-            local foodAmount = self.animalData.foodList[string.lower(item.id)]
+            local foodAmount = self.animalType.foodList[string.lower(item.id)]
             self:processFood(foodAmount)
         end
 
@@ -939,7 +972,7 @@ function Animal:eatFromWorld(target)
     elseif target.object.objectType == tes3.objectType.ingredient then
 
         self:pickUpItem(target)
-        local foodAmount = self.animalData.foodList[string.lower(target.object.id)]
+        local foodAmount = self.animalType.foodList[string.lower(target.object.id)]
         self:processFood(foodAmount)
         tes3.removeItem{
             reference = self.reference,
@@ -972,7 +1005,7 @@ function Animal:eatFromInventory(item, itemData)
     }
     tes3ui.forcePlayerInventoryUpdate()
 
-    self:processFood(self.animalData.foodList[string.lower(item.id)])
+    self:processFood(self.animalType.foodList[string.lower(item.id)])
 
     --visuals/sound
     self:playAnimation("eat")
@@ -1051,7 +1084,7 @@ function Animal:handOverItems()
     self.refData.carriedItems = nil
 
     --make happier
-    self:modPlay(self.animalData.play.fetchValue)
+    self:modPlay(self.animalType.play.fetchValue)
     timer.delayOneFrame(function()
         self:playAnimation("happy")
     end)
@@ -1138,17 +1171,17 @@ function Animal:getMood(moodType)
 end
 
 function Animal:updatePlay(timeSinceUpdate)
-    local changeAmount = self.animalData.play.changePerHour * timeSinceUpdate
+    local changeAmount = self.animalType.play.changePerHour * timeSinceUpdate
     self:modPlay(changeAmount)
 end
 
 function Animal:updateAffection(timeSinceUpdate)
-    local changeAmount = self.animalData.affection.changePerHour * timeSinceUpdate
+    local changeAmount = self.animalType.affection.changePerHour * timeSinceUpdate
     self:modAffection(changeAmount)
 end
 
 function Animal:updateHunger(timeSinceUpdate)
-    local changeAmount = self.animalData.hunger.changePerHour * timeSinceUpdate
+    local changeAmount = self.animalType.hunger.changePerHour * timeSinceUpdate
     self:modHunger(changeAmount)
 end
 
@@ -1158,7 +1191,7 @@ function Animal:updateTrust(timeSinceUpdate)
     --Trust changes if nearby
     local happinessMulti = math.remap(self.refData.happiness, 0, 100, -1.0, 1.0)
     local trustChangeAmount = (
-        self.animalData.trust.changePerHour *
+        self.animalType.trust.changePerHour *
         happinessMulti *
         timeSinceUpdate
     )
@@ -1432,7 +1465,7 @@ function Animal:getMenuTitle()
     local name = self:getName() or "This"
     return string.format(
         "%s is a %s%s %s. %s %s.",
-        name, self.refData.isBaby and "baby " or "", self.refData.gender, self.animalData.type,
+        name, self.refData.isBaby and "baby " or "", self.refData.gender, self.animalType.type,
         self.syntax:getHeShe(), self:getMood("happiness").description
     )
 end
@@ -1483,12 +1516,12 @@ function Animal:feed()
             filter = function(e)
                 logger:trace("Filter: checking: %s", e.item.id)
 
-                for id, value in pairs(self.animalData.foodList) do
+                for id, value in pairs(self.animalType.foodList) do
                     logger:trace("%s: %s", id, value)
                 end
                 return (
                     e.item.objectType == tes3.objectType.ingredient and
-                    self.animalData.foodList[string.lower(e.item.id)] ~= nil
+                    self.animalType.foodList[string.lower(e.item.id)] ~= nil
                 )
             end,
             callback = function(e)
@@ -1501,8 +1534,8 @@ function Animal:feed()
 end
 
 function Animal:rename(isBaby)
-    local label = isBaby and string.format("Name your new baby %s %s", self.refData.gender, self.animalData.type) or
-        string.format("Enter the new name of your %s %s:",self.refData.gender, self.animalData.type)
+    local label = isBaby and string.format("Name your new baby %s %s", self.refData.gender, self.animalType.type) or
+        string.format("Enter the new name of your %s %s:",self.refData.gender, self.animalType.type)
     local renameMenuId = tes3ui.registerID("TheGuarWhisperer_Rename")
 
     local t = {
@@ -1514,7 +1547,7 @@ function Animal:rename(isBaby)
         self:setName(newName)
         tes3ui.leaveMenuMode()
         tes3ui.findMenu(renameMenuId):destroy()
-        tes3.messageBox("%s has been renamed to %s", Syntax.capitaliseFirst(self.animalData.type), self:getName())
+        tes3.messageBox("%s has been renamed to %s", Syntax.capitaliseFirst(self.animalType.type), self:getName())
         self:playAnimation("happy")
     end
 
@@ -1545,7 +1578,7 @@ end
 function Animal:updateGrowth()
     local age = common.getHoursPassed() - self.refData.birthTime
     if self.refData.isBaby then
-        if age > self.animalData.hoursToMature then
+        if age > self.animalType.hoursToMature then
             --No longer a baby, turn into an adult
             self.refData.isBaby = false
             if not self:getName() then
@@ -1554,7 +1587,7 @@ function Animal:updateGrowth()
             self.reference.scale = 1
         else
             --map scale to age
-            local newScale = math.remap(age, 0,  self.animalData.hoursToMature, self.animalData.babyScale, 1)
+            local newScale = math.remap(age, 0,  self.animalType.hoursToMature, self.animalType.babyScale, 1)
             self.reference.scale = newScale
         end
         self:scaleAttributes()
@@ -1664,7 +1697,7 @@ function Animal.getWhiteBabyChance()
 end
 
 function Animal:getCanConceive()
-    if not self.animalData.breedable then return false end
+    if not self.animalType.breedable then return false end
     if not ( self.refData.gender == "female" ) then return false end
     if self.refData.isBaby then return false end
     if not self.mobile.hasFreeAction then return false end
@@ -1672,14 +1705,14 @@ function Animal:getCanConceive()
     if self.refData.lastBirthed then
         local now = common.getHoursPassed()
         local hoursSinceLastBirth = now - self.refData.lastBirthed
-        local enoughTimePassed = hoursSinceLastBirth > self.animalData.birthIntervalHours
+        local enoughTimePassed = hoursSinceLastBirth > self.animalType.birthIntervalHours
         if not enoughTimePassed then return false end
     end
     return true
 end
 
 function Animal:canBeImpregnatedBy(animal)
-    if not animal.animalData.breedable then return false end
+    if not animal.animalType.breedable then return false end
     if not (animal.refData.gender == "male" ) then return false end
     if animal.refData.isBaby then return false end
     if not animal.mobile.hasFreeAction then return false end
@@ -1721,7 +1754,7 @@ function Animal:breed()
                         self.reference.orientation.z,
                     },
                     cell = self.reference.cell,
-                    scale = self.animalData.babyScale
+                    scale = self.animalType.babyScale
                 }
                 babyRef.mobile.fight = 0
                 babyRef.mobile.flee = 0
@@ -1729,7 +1762,7 @@ function Animal:breed()
                 baby = Animal:new(babyRef)
                 if baby then
                     baby.refData.isBaby = true
-                    baby.refData.trust = self.animalData.trust.babyLevel
+                    baby.refData.trust = self.animalType.trust.babyLevel
                     --baby:inheritGenes(self, partner)
                     baby:updateGrowth()
                     baby:setHome(baby.reference.position, baby.reference.cell)

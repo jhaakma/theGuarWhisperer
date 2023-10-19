@@ -116,6 +116,7 @@ function AIFixer:fixSoundBug()
                     }
                 end
             end
+            container:delete()
             --toggle lights to update scene effects etc
             if self.animal.refData.lanternOn then
                 logger:debug("AI Fix - Toggling lantern")
