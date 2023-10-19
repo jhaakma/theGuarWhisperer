@@ -42,7 +42,7 @@ local function createContextList(cMenu, parentBlock)
             label.color = tes3ui.getPalette("disabled_color")
         end
     end
-end 
+end
 
 local function createCommandList(cMenu, parentBlock)
     local container = createCommandContainer(cMenu, parentBlock)
@@ -85,7 +85,7 @@ end
 function this.destroyContextMenu()
     local menu = tes3ui.findMenu(tes3ui.registerID("MenuMulti"))
     if menu then
-        
+
         local contextMenu = menu:findChild(commandMenuId)
         if contextMenu then
             contextMenu:destroy()
@@ -95,7 +95,7 @@ end
 
 function this.destroyCommandMenu()
     local menu = tes3ui.findMenu(commandMenuId)
-    if menu then 
+    if menu then
         menu:destroy()
         tes3ui.leaveMenuMode()
     end
@@ -116,7 +116,7 @@ function this.createContextMenu(cMenu)
             contextMenu.autoHeight = true
             contextMenu.autoWidth = true
             contextMenu.absolutePosAlignX = 0.5
-            contextMenu.layoutOriginFractionY = 0.60
+            contextMenu.absolutePosAlignY = 0.60
             --background
             local labelBackground = contextMenu:createRect({color = {0, 0, 0}})
             labelBackground.autoHeight = true

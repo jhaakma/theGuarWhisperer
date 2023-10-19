@@ -1,49 +1,59 @@
-local this = {} 
+---@class GuarWhisperer.Common.targetData
+---@field reference tes3reference
+---@field intersection tes3vector3
+---@field playerTarget tes3reference
+
+---@class GuarWhisperer.Common
+---@field activeCompanion GuarWhisperer.Animal
+---@field targetData GuarWhisperer.Common.targetData
+local this = {}
 
 this.fetchItems = {}
 
-local logger = require("mer.theGuarWhisperer.logger")
-
 this.configPath = "guar_whisperer"
-local inMemConfig 
-function this.getConfig()
-    return inMemConfig and inMemConfig or mwse.loadConfig(this.configPath,
-    {
-        enabled = true,
-        commandToggleKey = { keyCode = tes3.scanCode.q},
-        logLevel = logger.logLevel.INFO,
-        teleportDistance = 1500,
-        merchants = {
-            ["arrille"] = true,
-            ["ra'virr"] = true,
-            ["mebestian ence"] = true,
-            ["alveno andules"] = true,
-            ["dralasa nithryon"] = true,
-            ["galtis guvron"] = true,
-            ["goldyn belaram"] = true,
-            ["irgola"] = true,
-            ["clagius clanler"] = true,
-            ["fadase selvayn"] = true,
-            ["tiras sadus"] = true,
-            ["heifnir"] = true,
-            ["ancola"] = true,
-        },
-        exclusions = {
-            guar = true,
-            guar_feral = true
-        }
+local inMemConfig
+
+---@class GuarWhisperer.Config
+local defaultConfig = {
+    enabled = true,
+    commandToggleKey = { keyCode = tes3.scanCode.q},
+    logLevel = "INFO",
+    teleportDistance = 1500,
+    merchants = {
+        ["arrille"] = true,
+        ["ra'virr"] = true,
+        ["mebestian ence"] = true,
+        ["alveno andules"] = true,
+        ["dralasa nithryon"] = true,
+        ["galtis guvron"] = true,
+        ["goldyn belaram"] = true,
+        ["irgola"] = true,
+        ["clagius clanler"] = true,
+        ["fadase selvayn"] = true,
+        ["tiras sadus"] = true,
+        ["heifnir"] = true,
+        ["ancola"] = true,
+    },
+    exclusions = {
+        guar = true,
+        guar_feral = true
     }
-)
+}
+
+function this.getConfig()
+    return inMemConfig and inMemConfig or mwse.loadConfig(this.configPath, defaultConfig)
 end
 function this.saveConfig(newConfig)
     inMemConfig = newConfig
     mwse.saveConfig(this.configPath, newConfig)
 end
- 
 
-this.log = logger.new{ 
+
+this.log = require("logging.logger").new{
     name = "The Guar Whisperer",
-    logLevel = this.getConfig().logLevel
+    logLevel = this.getConfig().logLevel,
+    includeTimestamp = true,
+
 }
 this.merchantContainer = "mer_tgw_crate"
 this.packId = "mer_tgw_guarpack"
@@ -60,9 +70,9 @@ this.packItems = {
     tent = {
         id = "SWITCH_TENT",
         items = {
-            "a_tent_pack", 
-            "a_bed_covered", 
-            "a_bed_roll", 
+            "a_tent_pack",
+            "a_bed_covered",
+            "a_bed_roll",
             "ashfall_bedroll",
             "ashfall_cbroll_misc",
             "ashfall_tent_misc",
@@ -72,7 +82,7 @@ this.packItems = {
         dispAll = true,
         grabNode = "TENT"
     },
-    
+
     axe = {
         id = "SWITCH_AXE",
         items = {
@@ -168,8 +178,8 @@ this.packItems = {
 
 this.idleChances = {
    { group = "idle3", maxChance =  25 },  --sit
-   { group = "idle4", maxChance = 50 },  --eat 
-   { group = "idle5", maxChance = 100 },  --look 
+   { group = "idle4", maxChance = 50 },  --eat
+   { group = "idle5", maxChance = 100 },  --look
 }
 
 
@@ -187,7 +197,7 @@ local function initialiseData()
     if not tes3.player.data.theGuarWhisperer then
         tes3.player.data.theGuarWhisperer = {}
     end
-    
+
     this.data = tes3.player.data.theGuarWhisperer
 
     --in case you were stupid enough to save/load during a fadeout
@@ -202,17 +212,12 @@ function this.getHoursPassed()
     return ( tes3.worldController.daysPassed.value * 24 ) + tes3.worldController.hour.value
 end
 
-function this.upperFirst(str)
-    return (string.gsub( str, "^%l", string.upper))
-end
-
-
 function this.getIsDead(ref)
     if not ref.mobile then return false end
     local animState = ref.mobile.actionData.animationAttackState
     local isDead = (
-        ref.mobile.health.current <= 0 or 
-        animState == tes3.animationState.dying or 
+        ref.mobile.health.current <= 0 or
+        animState == tes3.animationState.dying or
         animState == tes3.animationState.dead
     )
     return isDead
@@ -243,18 +248,6 @@ function this.messageBox(params)
     })
 end
 
-function this.yeet(reference)
-    reference.sceneNode.appCulled = true
-    tes3.positionCell{
-        reference = reference, 
-        position = { 0, 0, 0, },
-    }
-    reference:disable()
-    timer.delayOneFrame(function()
-        mwscript.setDelete{ reference = reference}
-    end)
-end
-
 local function setControlsDisabled(state)
     tes3.mobilePlayer.controlsDisabled = state
     tes3.mobilePlayer.jumpingDisabled = state
@@ -269,6 +262,7 @@ end
 
 function this.enableControls()
     setControlsDisabled(false)
+    ---@diagnostic disable-next-line: missing-fields
     tes3.runLegacyScript{command = "EnableInventoryMenu"}
 end
 
@@ -306,7 +300,7 @@ function this.fadeTimeOut( hoursPassed, secondsTaken, callback )
                 timer.start({
                     type = timer.real,
                     iterations = 1,
-                    duration = fadeBackTime, 
+                    duration = fadeBackTime,
                     callback = fadeTimeIn
                 })
             end

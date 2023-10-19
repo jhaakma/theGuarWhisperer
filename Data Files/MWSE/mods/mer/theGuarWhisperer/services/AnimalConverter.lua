@@ -1,14 +1,11 @@
 local Animal = require("mer.theGuarWhisperer.Animal")
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
 local common = require("mer.theGuarWhisperer.common")
-local this = {}
 
-function this.getAnimal(ref)
-    return Animal:new(ref)
-end
+---@class GuarWhisperer.AnimalConverter
+local AnimalConverter = {}
 
-
-function this.convertToTamedGuar(reference, data)
+function AnimalConverter.convert(reference, data)
     local newRef = tes3.createReference{
         object = animalConfig.guarMapper[data.extra.color],
         position = reference.position,
@@ -19,12 +16,13 @@ function this.convertToTamedGuar(reference, data)
         },
         cell = reference.cell,
     }
-    
-
     --Remove old ref
-    common.yeet(reference)
-    
-    local animal = this.getAnimal(newRef)
+    reference:setDelete()
+
+    local animal = Animal.get(newRef)
+    if not animal then
+        return
+    end
     for key, val in pairs(data.extra) do
         animal.refData[key] = val
     end
@@ -38,5 +36,4 @@ function this.convertToTamedGuar(reference, data)
     return animal
 end
 
-
-return this
+return AnimalConverter

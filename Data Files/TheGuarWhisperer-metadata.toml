@@ -1,0 +1,19 @@
+[package]
+name = "The Guar Whisperer"
+description = "Allows your to tame and breed guars, and keep them as companions."
+homepage = "https://www.nexusmods.com/morrowind/mods/48247"
+repository = "https://github.com/jhaakma/theGuarWhisperer"
+authors = [ "Merlord",]
+version = "3.14.3"
+
+[dependencies]
+assets = [ "TheGuarWhisperer.esp", "Icons/mer_tgw", "Meshes/mer_tgw", "MWSE/mods/mer/theGuarWhisperer"]
+
+[dependencies.mwse]
+buildnumber = 3410
+
+[dependencies.mge-xe]
+version = ">=0.15.0"
+
+[tools.mwse]
+lua-mod = "mer.theGuarWhisperer"

@@ -1,7 +1,6 @@
-local animalController = require("mer.theGuarWhisperer.animalController")
-
+local Animal = require("mer.theGuarWhisperer.Animal")
 local function eat(e)
-    local animal = animalController.getAnimal(e.reference)
+    local animal = Animal.get(e.reference)
     if animal then
         animal:modHunger(e.amount)
     end

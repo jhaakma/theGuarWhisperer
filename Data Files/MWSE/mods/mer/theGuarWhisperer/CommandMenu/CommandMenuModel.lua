@@ -1,9 +1,9 @@
 --[[
-    Handles state of command menu and calls UI code 
+    Handles state of command menu and calls UI code
 ]]
 
 local ui = require("mer.theGuarWhisperer.CommandMenu.commandMenuView")
-local animalController = require("mer.theGuarWhisperer.animalController")
+local Animal = require("mer.theGuarWhisperer.Animal")
 local common = require("mer.theGuarWhisperer.common")
 
 local CommandMenu = {}
@@ -15,8 +15,6 @@ CommandMenu.targetData = {}
 
 CommandMenu.pages = {
     main = require("mer.theGuarWhisperer.CommandMenu.commandLists.mainCommands"),
-    combat = require("mer.theGuarWhisperer.CommandMenu.commandLists.combatCommands"),
-    pack = require("mer.theGuarWhisperer.CommandMenu.commandLists.packCommands"),
 }
 CommandMenu.currentPage = CommandMenu.pages.main
 
@@ -37,9 +35,9 @@ function CommandMenu:showContextMenu()
     ui.createContextMenu(self)
 end
 
-function CommandMenu:destroy() 
-    if self.activeCompanion then 
-        self.activeCompanion.refData.commandActive = nil 
+function CommandMenu:destroy()
+    if self.activeCompanion then
+        self.activeCompanion.refData.commandActive = nil
     end
     self.currentPage = self.pages.main
     self.activeCommandList = {}
@@ -50,7 +48,7 @@ function CommandMenu:destroy()
     event.unregister("simulate", self.checkCommandState)
 end
 
-function CommandMenu:performAction() 
+function CommandMenu:performAction()
     local activeCommand = self:getActiveCommand()
     if activeCommand then
         activeCommand.command(self)
@@ -71,7 +69,7 @@ function CommandMenu:performAction()
     end
 end
 
-function CommandMenu:filterCommands() 
+function CommandMenu:filterCommands()
     self.commandList = {}
     for _, command in ipairs(self.currentPage.commands) do
         if command.requirements(self) then
@@ -89,16 +87,16 @@ function CommandMenu:changePage(newPage, animal)
 end
 
 
-function CommandMenu:scrollUp() 
-    self.index = self.index + 1 
+function CommandMenu:scrollUp()
+    self.index = self.index + 1
     if self.index > #self.commandList then
         self.index = 1
     end
     self:showContextMenu()
 end
 
-function CommandMenu:scrollDown() 
-    self.index = self.index - 1 
+function CommandMenu:scrollDown()
+    self.index = self.index - 1
     if self.index < #self.commandList then
         self.index = 1
     end
@@ -112,7 +110,7 @@ function CommandMenu:toggleCommandMenu()
     --command menu inactive, see if we're looking at a companion to turn the menu on
     else
         --playerTarget takes priority because of that stupidly large hitbox
-        local animal = animalController.getAnimal(tes3.getPlayerTarget())
+        local animal = Animal.get(tes3.getPlayerTarget())
         --otherwise do a ray cast
         if not animal then
             local ray = tes3.rayTest{
@@ -121,7 +119,7 @@ function CommandMenu:toggleCommandMenu()
                 ignore = { tes3.player },
             }
             if ray then
-                animal = animalController.getAnimal(ray.reference)
+                animal = Animal.get(ray.reference)
             end
         end
 
@@ -132,7 +130,7 @@ function CommandMenu:toggleCommandMenu()
                 self.inMenu = false
                 self:checkCommandState()
                 event.register("simulate", self.checkCommandState )
-                
+
                 self:showContextMenu()
             end
         end
@@ -142,9 +140,9 @@ end
 
 function CommandMenu.checkCommandState()
     local self = CommandMenu
-    if not self.targetData then 
+    if not self.targetData then
         common.log:debug("No target Data")
-        self.targetData = {} 
+        self.targetData = {}
     end
     if self.activeCompanion then
 
@@ -157,12 +155,13 @@ function CommandMenu.checkCommandState()
         if isShiftDown then
             table.insert(ignoreList, self.activeCompanion.reference)
         end
- 
+
         local ray = tes3.rayTest{
             position = tes3.getPlayerEyePosition(),
             direction = tes3.getPlayerEyeVector(),
             ignore = ignoreList,
         }
+
         local newTargetData = ray and { reference = ray.reference, intersection = ray.intersection:copy() } or {}
         newTargetData.playerTarget = tes3.getPlayerTarget()
         --Changed our target, update commandlist and UI
@@ -180,7 +179,7 @@ function CommandMenu.checkCommandState()
                 self:showContextMenu()
             end
         end
-    
+        self.targetData.intersection = newTargetData.intersection
     else
         common.log:trace("No active Companion")
     end

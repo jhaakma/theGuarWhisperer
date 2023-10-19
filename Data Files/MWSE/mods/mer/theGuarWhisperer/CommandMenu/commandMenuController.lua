@@ -42,7 +42,7 @@ local function grabFromPack(animal)
         ignore = { tes3.player },
         findAll = true
     }
-   
+
     if results then
         for _, result in ipairs(results) do
             if result and result.object then
@@ -84,7 +84,7 @@ local function grabFromPack(animal)
                                 local inventory = animal.reference.object.inventory
                                 if inventory:contains(itemId) then
                                     common.log:debug("Found %s in inventory", itemId)
-                                    for stack in tes3.iterate(inventory.iterator) do
+                                    for _, stack in pairs(inventory) do
                                         if stack.object.id:lower() == itemId:lower() then
                                             local count = stack.count
                                             local itemData
@@ -127,12 +127,12 @@ end
 
 
 local function onKeyPress(e)
-    if tes3.menuMode() then 
-        return 
+    if tes3.menuMode() then
+        return
     end
     --Pressed Activate
     if didPressActivate() then
-        
+
         if commandMenu.activeCompanion then
             --can activate as long as we aren't looking at another reference
             local target = tes3.getPlayerTarget()
@@ -142,12 +142,12 @@ local function onKeyPress(e)
         end
     else
         --Check if Command button was pressed
-       if didPressToggleKey(e) then 
-            return commandMenu:toggleCommandMenu() 
+       if didPressToggleKey(e) then
+            return commandMenu:toggleCommandMenu()
         end
     end
 end
-event.register("keyDown", onKeyPress) 
+event.register("keyDown", onKeyPress)
 
 
 

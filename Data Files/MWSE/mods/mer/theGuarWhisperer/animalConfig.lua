@@ -6,8 +6,49 @@ this.idles = {
         eat = "idle4",
         pet = "idle6",
         fetch = "idle6",
-        sad = "idle3" 
+        sad = "idle3"
 }
+
+---@class GuarWhisperer.AnimalData.lvl
+---@field fetchProgress number
+---@field attackProgress number
+
+---@class GuarWhisperer.AnimalData.hunger
+---@field changePerHour number
+
+---@class GuarWhisperer.AnimalData.play
+---@field changePerHour number
+---@field fetchValue number
+---@field greetValue number
+
+---@class GuarWhisperer.AnimalData.affection
+---@field changePerHour number
+---@field petValue number
+
+---@class GuarWhisperer.AnimalData.trust
+---@field maxDistance number
+---@field changePerHour number
+---@field babyLevel number
+
+---@class GuarWhisperer.AnimalData.reqs
+---@field pack number
+---@field follow number
+
+---@class GuarWhisperer.AnimalData
+---@field type string
+---@field mutation number
+---@field birthIntervalHours number
+---@field babyScale number
+---@field hoursToMature number
+---@field lvl GuarWhisperer.AnimalData.lvl
+---@field hunger GuarWhisperer.AnimalData.hunger
+---@field play GuarWhisperer.AnimalData.play
+---@field affection GuarWhisperer.AnimalData.affection
+---@field trust GuarWhisperer.AnimalData.trust
+---@field reqs GuarWhisperer.AnimalData.reqs
+---@field breedable boolean
+---@field tameable boolean
+---@field foodList table<string, number>
 
 
 this.animals = {
@@ -89,41 +130,41 @@ this.greetableGuars = {
 
 --Meshes to allow to turn into switch guar
 this.meshes = {
-    -- ["mdfg\\fabricant_guar.nif"] = { 
+    -- ["mdfg\\fabricant_guar.nif"] = {
     --     type  = this.animals.guar,
     --     extra = {
-    --         hasPack = false, 
+    --         hasPack = false,
     --         canHavePack = false,
-    --         color = "fabricant", 
-    --         foodList = { ["ingred_scrap_metal_01"] = 40} 
+    --         color = "fabricant",
+    --         foodList = { ["ingred_scrap_metal_01"] = 40}
     --     }
     -- },
-    ["r\\guar.nif"] = { 
-        type  = this.animals.guar,
-        extra = {
-            hasPack = false, 
-            canHavePack = true,
-            color = "standard" 
-        },
-    },
-    ["r\\guar_white.nif"] = {   
+    ["r\\guar.nif"] = {
         type  = this.animals.guar,
         extra = {
             hasPack = false,
             canHavePack = true,
-            color = "white" 
+            color = "standard"
+        },
+    },
+    ["r\\guar_white.nif"] = {
+        type  = this.animals.guar,
+        extra = {
+            hasPack = false,
+            canHavePack = true,
+            color = "white"
         }
     },
     -- },
     -- ["r\\guar_withpack.nif"] = {
     --     type  = this.animals.guar,
     --     extra = {
-    --         hasPack = true, 
+    --         hasPack = true,
     --         canHavePack = true,
-    --         color = "standard" 
+    --         color = "standard"
     --     }
     -- },
-    -- ["tr\\cr\\guar_withharness.nif"] = {   
+    -- ["tr\\cr\\guar_withharness.nif"] = {
     --     type  = this.animals.guar,
     --     extra = {
     --         hasPack = true,

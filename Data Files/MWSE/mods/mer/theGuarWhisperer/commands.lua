@@ -1,9 +1,9 @@
 
-local animalController = require("mer.theGuarWhisperer.animalController")
+local Animal = require("mer.theGuarWhisperer.Animal")
 local common = require("mer.theGuarWhisperer.common")
 return {
     --Priority 1: specific ref commands
-    { 
+    {
         --ATTACK
         label = function()
             return string.format("Attack %s", common.targetData.reference.object.name)
@@ -22,12 +22,13 @@ return {
             if common.targetData.reference.mobile.health.current < 1 then
                 return false
             end
+            ---@param actor tes3mobileActor
             for actor in tes3.iterate(tes3.mobilePlayer.friendlyActors) do
                 if actor.reference == common.targetData.reference then
                     return false
                 end
             end
-            if animalController.getAnimal(common.targetData.reference) then
+            if Animal.get(common.targetData.reference) then
                 return false
             end
             if not common.activeCompanion:hasSkillReqs("attack") then
@@ -51,9 +52,9 @@ return {
         end,
         requirements = function()
             if not ( common.targetData and common.targetData.reference ) then return false end
-            local targetObj = common.targetData.reference.baseObject or 
+            local targetObj = common.targetData.reference.baseObject or
                 common.targetData.reference.object
-    
+
             return (
                 targetObj and
                 targetObj.objectType == tes3.objectType.npc and
@@ -93,7 +94,7 @@ return {
         requirements = function()
             return (
                 common.activeCompanion:canHarvest(common.targetData.reference) and
-                tes3.hasOwnershipAccess{ target = common.targetData.reference } and 
+                tes3.hasOwnershipAccess{ target = common.targetData.reference } and
                 common.activeCompanion:hasSkillReqs("fetch")
             )
         end
@@ -110,7 +111,7 @@ return {
         requirements = function()
             return (
                 common.activeCompanion:canFetch(common.targetData.reference) and
-                tes3.hasOwnershipAccess{ target = common.targetData.reference } and 
+                tes3.hasOwnershipAccess{ target = common.targetData.reference } and
                 common.activeCompanion:hasSkillReqs("fetch")
             )
         end
@@ -125,11 +126,9 @@ return {
             common.activeCompanion:moveToAction(common.targetData.reference, "fetch")
         end,
         requirements = function()
-            return (
-                common.activeCompanion.refData.carriedItem == nil and
-                common.activeCompanion:canFetch(common.targetData.reference) and
-                not tes3.hasOwnershipAccess{ target = common.targetData.reference }
-            )
+            return (not common.activeCompanion:hasItems())
+                and common.activeCompanion:canFetch(common.targetData.reference)
+                and not tes3.hasOwnershipAccess{ target = common.targetData.reference }
         end,
         doSteal = true
     },
@@ -141,45 +140,18 @@ return {
         end,
         description = "Move to the selected location.",
         command = function()
-            tes3.messageBox("%s moving to location", common.activeCompanion.refData.name)
+            tes3.messageBox("%s moving to location", common.activeCompanion:getName())
             common.activeCompanion:moveTo(common.targetData.intersection)
         end,
         requirements = function()
             return (
-                common.targetData.intersection ~= nil and 
+                common.targetData.intersection ~= nil and
                 not common.targetData.reference and
                 common.activeCompanion:hasSkillReqs("follow")
             )
         end
     },
     --priority 3: movement commands
-
-    -- {
-    --     --FOLLOW TARGET
-    --     label = function()
-    --         return string.format("Follow %s", animalController.getAnimal(common.targetData.reference).refData.name)
-    --     end,
-    --     description = "Start following the target guar.",
-    --     command = function()
-    --         tes3.messageBox("Following")
-    --         common.activeCompanion:returnTo(common.targetData.reference)
-    --     end,
-    --     requirements = function()
-    --         if common.targetData and common.targetData.reference then
-    --             mwse.log(common.targetData.reference.object.id)
-    --             local animal = animalController.getAnimal(common.targetData.reference)
-    --             mwse.log(animal and animal.refData.name)
-    --         end
-            
-    --         return (
-    --             common.activeCompanion:hasSkillReqs("follow") and 
-    --             common.targetData and
-    --             common.targetData.reference and
-    --             common.targetData.reference ~= common.activeCompanion.reference and
-    --             animalController.getAnimal(common.targetData.reference)
-    --         )
-    --     end
-    -- },
 
     {
         --FOLLOW PLAYER
@@ -197,9 +169,9 @@ return {
                 common.activeCompanion:getAI() ~= "following" and
                 common.activeCompanion:hasSkillReqs("follow")-- and
                 -- ( not (
-                --     common.targetData and 
+                --     common.targetData and
                 --     common.targetData.reference and
-                --     animalController.getAnimal(common.targetData.reference)
+                --     Animal.get(common.targetData.reference)
                 -- ) or common.targetData.reference == common.activeCompanion.reference )
             )
         end
@@ -220,7 +192,7 @@ return {
         requirements = function()
             return common.activeCompanion:getAI() ~= "waiting"
         end
-    }, 
+    },
 
     --priority 4: close-up commands
     {
@@ -260,9 +232,9 @@ return {
             tes3.player:activate(common.activeCompanion.reference)
         end,
         requirements = function(inMenu)
-            return ( 
+            return (
                 inMenu and
-                common.activeCompanion.reference.context and 
+                common.activeCompanion.reference.context and
                 common.activeCompanion.reference.context.companion == 1 and
                 common.activeCompanion.refData.hasPack == true
             )
@@ -275,10 +247,10 @@ return {
         end,
         description = "Equip a backpack to enable companion share.",
         command = function()
-            common.activeCompanion:equipPack()
+            common.activeCompanion.pack:equipPack()
         end,
         requirements = function(inMenu)
-            return inMenu and common.activeCompanion:canEquipPack()
+            return inMenu and common.activeCompanion.pack:canEquipPack()
         end
     },
     {
@@ -288,7 +260,7 @@ return {
         end,
         description = "Unequip the guar's backpack.",
         command = function()
-            common.activeCompanion:unequipPack()
+            common.activeCompanion.pack:unequipPack()
         end,
         requirements = function(inMenu)
             return ( inMenu and common.activeCompanion.refData.hasPack == true )
@@ -343,7 +315,7 @@ return {
                 common.activeCompanion:getAI() ~= "wandering"
             )
         end
-    }, 
+    },
     {
         --Pacify
         label = function()
@@ -352,7 +324,7 @@ return {
         description = "Stop your guar from engaging in combat.",
         command = function()
             common.activeCompanion:setAttackPolicy("passive")
-            tes3.messageBox("%s will no longer engage in combat.", common.activeCompanion.refData.name)
+            tes3.messageBox("%s will no longer engage in combat.", common.activeCompanion:getName())
         end,
         requirements = function(inMenu)
             return ( inMenu and common.activeCompanion:getAttackPolicy() ~= "passive" )
@@ -366,7 +338,7 @@ return {
         description = "Your guar will defend you in combat.",
         command = function()
             common.activeCompanion:setAttackPolicy("defend")
-            tes3.messageBox("%s will now defend you in battle.", common.activeCompanion.refData.name)
+            tes3.messageBox("%s will now defend you in battle.", common.activeCompanion:getName())
         end,
         requirements = function(inMenu)
             return ( inMenu and common.activeCompanion:getAttackPolicy() ~= "defend" )
@@ -416,7 +388,7 @@ return {
     {
         --GO HOME
         label = function()
-            return string.format("Go home (%s)", 
+            return string.format("Go home (%s)",
                 tes3.getCell{ id = common.activeCompanion.refData.home.cell} )
         end,
         description = "Send your guar back to their home location.",
@@ -424,11 +396,9 @@ return {
             common.activeCompanion:goHome()
         end,
         requirements = function(inMenu)
-            return ( 
-                inMenu and
-                common.activeCompanion:hasHome() and
-                common.activeCompanion:hasSkillReqs("follow")
-            )
+            return inMenu
+                and common.activeCompanion:getHome()
+                and common.activeCompanion:hasSkillReqs("follow")
         end
     },
     {
@@ -453,7 +423,7 @@ return {
             return "Cancel"
         end,
         description = "Exit menu",
-        command = function() 
+        command = function()
             return true
         end,
         requirements = function() return true end

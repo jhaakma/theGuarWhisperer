@@ -1,79 +1,90 @@
+local Syntax = require("mer.theGuarWhisperer.services.Syntax")
 local common = require("mer.theGuarWhisperer.common")
-local this = {}
 
-this.ids = {
-    menu = tes3ui.registerID("TheGuarWhisperer_menu"),
-    outerBlock = tes3ui.registerID("TheGuarWhisperer_outerBlock"),
-    titleBlock = tes3ui.registerID("TheGuarWhisperer_titleBlock"),
-    title = tes3ui.registerID("TheGuarWhisperer_title"),
-    subtitle = tes3ui.registerID("TheGuarWhisperer_subtitle"),
-    mainBlock = tes3ui.registerID("TheGuarWhisperer_mainBlock"),
-    buttonsBlock = tes3ui.registerID("TheGuarWhisperer_buttonsBlock"),
-    infoBlock = tes3ui.registerID("TheGuarWhisperer_infoBlock"),
-    bottomBlock = tes3ui.registerID("TheGuarWhisperer_bottomBlock"),
-    closeButton = tes3ui.registerID("TheGuarWhisperer_closeButton"),
+local UI = {}
 
+UI.ids = {
+    menu = "TheGuarWhisperer_menu",
+    outerBlock = "TheGuarWhisperer_outerBlock",
+    titleBlock = "TheGuarWhisperer_titleBlock",
+    title = "TheGuarWhisperer_title",
+    subtitle = "TheGuarWhisperer_subtitle",
+    mainBlock = "TheGuarWhisperer_mainBlock",
+    buttonsBlock = "TheGuarWhisperer_buttonsBlock",
+    infoBlock = "TheGuarWhisperer_infoBlock",
+    bottomBlock = "TheGuarWhisperer_bottomBlock",
+    closeButton = "TheGuarWhisperer_closeButton",
 }
-this.menuWidth = 200
-this.menuHeight = 200
-this.padding = 8
+UI.menuWidth = 200
+UI.menuHeight = 200
+UI.padding = 8
+
+-- Register with Right Click Menu Exit
+local RCME = include("mer.RightClickMenuExit")
+if RCME then
+    RCME.registerMenu{
+        menuId = UI.ids.menu,
+        buttonId = UI.ids.closeButton
+    }
+end
 
 local function closeMenu()
-    tes3ui.findMenu(this.ids.menu):destroy()
+    tes3ui.findMenu(UI.ids.menu):destroy()
     tes3ui.leaveMenuMode()
 end
 
-
+---@param animal GuarWhisperer.Animal
 local function getSubtitleText(animal)
-    return string.format("Level %d %s %s", 
-        animal:getLevel(),
+    return string.format("Level %d %s %s",
+        animal.stats:getLevel(),
         animal.refData.gender,
         animal.refData.isBaby and "(baby)" or ""
     )
 end
 
+---@param animal GuarWhisperer.Animal
 local function getDescriptionText(animal)
-    return string.format("%s %s. %s %s.", 
-        animal.refData.name,
+    return string.format("%s %s. %s %s.",
+        animal:getName(),
         animal:getMood("happiness").description,
-        animal:getHeShe(),
+        animal.syntax:getHeShe(),
         animal:getMood("trust").description
     )
 end
 
-
-function this.showStatusMenu(animal)
-    local menu = tes3ui.createMenu{ id = this.ids.menu, fixedFrame = true }
+---@param animal GuarWhisperer.Animal
+function UI.showStatusMenu(animal)
+    local menu = tes3ui.createMenu{ id = UI.ids.menu, fixedFrame = true }
     menu.visible = false
     menu.autoWidth = true
     menu.autoHeight = true
-    tes3ui.enterMenuMode(this.ids.menu)
+    tes3ui.enterMenuMode(UI.ids.menu)
 
     --Outer block
-    local outerBlock = menu:createBlock{ id = this.ids.outerBlock}
+    local outerBlock = menu:createBlock{ id = UI.ids.outerBlock}
     do
         outerBlock.autoHeight = true
         outerBlock.autoWidth = true
         outerBlock.flowDirection = "top_to_bottom"
 
          --title block
-        local titleBlock = outerBlock:createBlock{ id = this.ids.titleBlock}
+        local titleBlock = outerBlock:createBlock{ id = UI.ids.titleBlock}
         do
             titleBlock.widthProportional = 1.0
             titleBlock.autoHeight = true
-            titleBlock.paddingBottom = this.padding
+            titleBlock.paddingBottom = UI.padding
             titleBlock.flowDirection = "top_to_bottom"
-            
-            local titleText = animal.refData.name
-            local title = titleBlock:createLabel{ id = this.ids.title, text = titleText }
-            do 
+
+            local titleText = animal:getName()
+            local title = titleBlock:createLabel{ id = UI.ids.title, text = titleText }
+            do
                 title.absolutePosAlignX = 0.5
                 title.color = tes3ui.getPalette("header_color")
             end
-        
+
             local subtitleText = getSubtitleText(animal)
             do
-                local subtitle = titleBlock:createLabel{ id = this.ids.subtitle, text = subtitleText}
+                local subtitle = titleBlock:createLabel{ id = UI.ids.subtitle, text = subtitleText}
                 subtitle.absolutePosAlignX = 0.5
             end
 
@@ -85,29 +96,29 @@ function this.showStatusMenu(animal)
             description.maxWidth = 200
         end
 
-        this.createStatsBlock(outerBlock, animal, true)
+        UI.createStatsBlock(outerBlock, animal, true)
 
-        
+
     --Bottom Block close button
-        local bottomBlock = outerBlock:createBlock{ id = this.ids.bottomBlock }
+        local bottomBlock = outerBlock:createBlock{ id = UI.ids.bottomBlock }
         do
             bottomBlock.flowDirection = "left_to_right"
             bottomBlock.autoHeight = true
             bottomBlock.widthProportional = 1.0
             bottomBlock.childAlignX = 1.0
-            
-            local closeButton = bottomBlock:createButton{ id = this.ids.closeButton, text = "Close"}
-            closeButton.alignX = 1.0
+
+            local closeButton = bottomBlock:createButton{ id = UI.ids.closeButton, text = "Close"}
+            closeButton.absolutePosAlignX = 1.0
             closeButton.borderAllSides = 2
             closeButton.borderTop = 7
             closeButton:register("mouseClick", closeMenu )
         end
     end
-    
+
 
 
     --update and display after a frame so everything is where its fucking supposed to be
-    timer.frame.delayOneFrame(function() 
+    timer.frame.delayOneFrame(function()
         menu.visible = true
         menu:updateLayout()
     end)
@@ -115,44 +126,44 @@ end
 
 
 --Generic Tooltip with header and description
-function this.createTooltip(thisHeader, thisLabel)
+function UI.createTooltip(thisHeader, thisLabel)
     local tooltip = tes3ui.createTooltipMenu()
-    
-    local outerBlock = tooltip:createBlock({ id = tes3ui.registerID("GuarWhisperer:outerBlock") })
+
+    local outerBlock = tooltip:createBlock({ id = "GuarWhisperer:outerBlock" })
     outerBlock.flowDirection = "top_to_bottom"
     outerBlock.paddingTop = 6
     outerBlock.paddingBottom = 12
     outerBlock.paddingLeft = 6
     outerBlock.paddingRight = 6
     outerBlock.width = 300
-    outerBlock.autoHeight = true    
-    
+    outerBlock.autoHeight = true
+
     local headerText = thisHeader
-    local headerLabel = outerBlock:createLabel({ id = tes3ui.registerID("GuarWhisperer:header"), text = headerText })
+    local headerLabel = outerBlock:createLabel({ id = "GuarWhisperer:header", text = headerText })
     headerLabel.autoHeight = true
     headerLabel.width = 285
     headerLabel.color = tes3ui.getPalette("header_color")
     headerLabel.wrapText = true
     --header.justifyText = "center"
-    
+
     local descriptionText = thisLabel
-    local descriptionLabel = outerBlock:createLabel({ id = tes3ui.registerID("GuarWhisperer:description"), text = descriptionText })
+    local descriptionLabel = outerBlock:createLabel({ id = "GuarWhisperer:description", text = descriptionText })
     descriptionLabel.autoHeight = true
     descriptionLabel.width = 285
-    descriptionLabel.wrapText = true   
-    
+    descriptionLabel.wrapText = true
+
     tooltip:updateLayout()
 end
 
-function this.createStatsBlock(parentBlock, animal, inMenu)
+function UI.createStatsBlock(parentBlock, animal, inMenu)
        --Right side info
-       local infoBlock = parentBlock:createBlock{ id = this.ids.infoBlock }
+       local infoBlock = parentBlock:createBlock{ id = UI.ids.infoBlock }
        infoBlock.autoHeight = true
        infoBlock.autoWidth = true
        infoBlock.minWidth = 200
        infoBlock.flowDirection = "top_to_bottom"
-       infoBlock.paddingAllSides = this.padding
-       
+       infoBlock.paddingAllSides = UI.padding
+
         local statData = {
             {
                 label = "Health",
@@ -194,7 +205,7 @@ function this.createStatsBlock(parentBlock, animal, inMenu)
             --fillbar.height = 10
             fillbar.widget.fillColor = stat.color
             if inMenu then
-                local label = fillbar:findChild(tes3ui.registerID("PartFillbar_text_ptr"))
+                local label = fillbar:findChild("PartFillbar_text_ptr")
                 label.text = string.format("%s: %d/%d", stat.label, stat.current, stat.max)
                 --fillbar:updateLayout()
             else
@@ -205,7 +216,7 @@ function this.createStatsBlock(parentBlock, animal, inMenu)
             fillbar:register("help", function()
                 local header = stat.label
                 local description = stat.description
-                this.createTooltip(header, description)
+                UI.createTooltip(header, description)
             end)
         end
 
@@ -213,14 +224,14 @@ function this.createStatsBlock(parentBlock, animal, inMenu)
        local doStats = false
        if doStats then
         infoBlock:createDivider()
-    
+
         for attrName, attribute in pairs(tes3.attribute) do
             local attrBlock = infoBlock:createBlock()
             attrBlock.flowDirection = "left_to_right"
             attrBlock.layoutWidthFraction = 1.0
             attrBlock.autoHeight = true
-    
-            attrBlock:createLabel{ text = common.upperFirst(attrName) }
+
+            attrBlock:createLabel{ text = Syntax.capitaliseFirst(attrName) }
             local value = tostring(animal.mobile.attributes[attribute + 1].current)
             local valueLabel =attrBlock:createLabel{ text = value }
             valueLabel.layoutOriginFractionX = 1.0
@@ -229,4 +240,4 @@ function this.createStatsBlock(parentBlock, animal, inMenu)
 end
 
 
-return this
+return UI

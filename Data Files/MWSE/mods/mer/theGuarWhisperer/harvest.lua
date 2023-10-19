@@ -9,40 +9,21 @@ modified by Merlord
 
 local this = {}
 
--- Make sure we have an up-to-date version of MWSE.
-if (mwse.buildDate == nil) or (mwse.buildDate < 20190514) then
-event.register("initialized", function()
-    tes3.messageBox(
-        "[Graphic Herbalism] Your MWSE is out of date!"
-        .. " You will need to update to a more recent version to use this mod."
-    )
-end)
-return
-end
-
 
 local config = include("graphicHerbalism.config") or {
     whitelist = {},
     blacklist = {}
 }
 
-
--- Make sure QuickLoot is up to date if it is installed.
-if ( config == nil ) then
-    return false
-end
-
-
-
 -- Detect if the reference is a valid herbalism subject.
 function this.isHerb(ref)
-if ref and ref.object.organic then
-    local id = ref.baseObject.id:lower()
-    if config.blacklist[id] then return false end
-    if config.whitelist[id] then return true end
-    return (ref.object.script == nil)
-end
-return false
+    if ref and ref.object.organic then
+        local id = ref.baseObject.id:lower()
+        if config.blacklist[id] then return false end
+        if config.whitelist[id] then return true end
+        return (ref.object.script == nil)
+    end
+    return false
 end
 
 

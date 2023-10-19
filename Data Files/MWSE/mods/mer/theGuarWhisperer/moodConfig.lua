@@ -42,40 +42,44 @@ this.happiness = {
 this.affection = {
     {
         id = "Neglected",
+        ---@param animal GuarWhisperer.Animal
         pettingResult = function(animal)
             return string.format(
                 "You you pat %s, but %s still looks neglected.",
-                animal.refData.name, animal:getHeShe(true)
+                animal:getName(), animal.syntax:getHeShe(true)
             )
         end,
         maxValue = 25
     },
     {
         id = "Lonely",
+        ---@param animal GuarWhisperer.Animal
         pettingResult = function(animal)
             return string.format(
                 "%s starts to cheer up as you pat %s on the head.",
-                animal.refData.name, animal:getHimHer(true)
+                animal:getName(), animal.syntax:getHimHer(true)
             )
         end,
         maxValue = 50
     },
     {
         id = "Affectionate",
+        ---@param animal GuarWhisperer.Animal
         pettingResult = function(animal)
             return string.format(
                 "%s purrs loudly as you give %s a scratch behind the ears.",
-                animal.refData.name, animal:getHimHer(true)
+                animal:getName(), animal.syntax:getHimHer(true)
             )
         end,
         maxValue = 75
     },
     {
         id = "Very Affectionate",
+        ---@param animal GuarWhisperer.Animal
         pettingResult = function(animal)
             return string.format(
                 "%s snuggles you affectionately.",
-                animal.refData.name
+                animal:getName()
             )
         end,
         maxValue = 100
@@ -164,4 +168,4 @@ this.hunger = {
 this.defaultHunger = 50
 this.defaultPlay = 20
 
-return this 
+return this
