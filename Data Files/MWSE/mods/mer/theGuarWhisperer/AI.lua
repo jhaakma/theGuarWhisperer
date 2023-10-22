@@ -5,32 +5,25 @@
 ]]
 local Animal = require("mer.theGuarWhisperer.Animal")
 local common = require("mer.theGuarWhisperer.common")
-local refManager = require("mer.theGuarWhisperer.referenceController")
 local logger = common.log
 
 local RUN_STATES = {
-    ["following"] = true,
+    --["following"] = true,
     ["moving"] = true,
 }
 
 event.register("simulate", function()
-    for ref in pairs(refManager.controllers.companion.references) do
-        local animal = Animal.get(ref)
-        if animal then
-            if animal.reference.mobile and RUN_STATES[animal:getAI()] then
-                animal.reference.mobile.isRunning = true
-            end
+    Animal.referenceManager:iterateReferences(function(_, animal)
+        if animal.reference.mobile and RUN_STATES[animal:getAI()] then
+            animal.reference.mobile.isRunning = true
         end
-    end
+    end)
 end)
-
 
 --Teleport to player when going back outside
 local function checkCellChanged(e)
     if e.previousCell and e.previousCell.isInterior and not e.cell.isInterior then
-        common.iterateRefType("companion", function(ref)
-            local animal = Animal.get(ref)
-            if not animal then return end
+        Animal.referenceManager:iterateReferences(function(_, animal)
             local doTeleport = animal:getAI() == "following"
                 and not animal:isDead()
                 and animal:distanceFrom(tes3.player) > common.getConfig().teleportDistance
@@ -101,12 +94,16 @@ local function onDeterminedAction(e)
         local target = e.session.mobile.actionData.target
 
         --Prevent attacking the player
-        if target and target.reference == tes3.player then
-            logger:debug("Target is player, blocking action %s", action.description)
-            e.session.selectedAction = ACTION.undecided
-            timer.delayOneFrame(function()
-                animal.reference.mobile:stopCombat(true)
-            end)
+        if target then
+            local targetingCompanion = Animal.get(target.reference)
+            local targetingPlayer = target.reference == tes3.player
+            if targetingCompanion or targetingPlayer then
+                logger:debug("Target is %s, blocking action %s", target.reference, action.description)
+                e.session.selectedAction = ACTION.undecided
+                timer.delayOneFrame(function()
+                    animal.reference.mobile:stopCombat(true)
+                end)
+            end
         end
 
         --Stop combat if too far away
@@ -156,11 +153,8 @@ event.register("loaded", function()
         iterations = -1,
         type = timer.simulate,
         callback = function()
-            common.iterateRefType("companion", function(ref)
-                local animal = Animal.get(ref)
-                if animal then
-                    animal.aiFixer:fixSoundBug()
-                end
+            Animal.referenceManager:iterateReferences(function(_, animal)
+                animal.aiFixer:fixSoundBug()
             end)
         end
     }

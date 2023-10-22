@@ -7,14 +7,20 @@ local function isBall(reference)
 end
 
 local function guarFollow(ball)
-    ---@param actor tes3mobileActor
-    for actor in tes3.iterate(tes3.mobilePlayer.friendlyActors) do
-        local animal = Animal.get(actor.reference)
-        if animal then
-            animal:moveToAction(ball, "fetch")
-            return
+    local validAnimals = {}
+    ---@param animal GuarWhisperer.Animal
+    Animal.referenceManager:iterateReferences(function(_, animal)
+        local moving = animal:getAI() == "moving"
+        local mouthEmpty = (not animal:hasItems())
+        local closeToBall = animal:distanceFrom(ball) < 1000
+        local closeToPlayer = animal:distanceFrom(tes3.player) < 500
+        if mouthEmpty and (closeToBall or closeToPlayer) and (not moving) then
+            table.insert(validAnimals, animal)
         end
-    end
+    end)
+    if #validAnimals == 0 then return end
+    local chosenAnimal = table.choice(validAnimals)
+    chosenAnimal:moveToAction(ball, "fetch")
 end
 
 local function placeBall(ref, position)

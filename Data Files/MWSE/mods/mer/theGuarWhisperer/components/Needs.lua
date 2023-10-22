@@ -50,6 +50,8 @@ end
 
 ---@return GuarWhisperer.Hunger.Status
 function Needs:getHungerStatus()
+    --init hunger value for getMood
+    self:setHunger(self:getHunger())
     return self:getMood("hunger")
 end
 

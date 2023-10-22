@@ -217,7 +217,6 @@ end
 function Stats:levelUp()
     local newLevel = self:getLevel() + 1
     self:setProgress(0)
-
     self:setLevel(newLevel)
     self:determineAttributes()
     self:determineHealth()
@@ -227,7 +226,5 @@ function Stats:levelUp()
         --buttons = { "Okay" }
     }
 end
-
-
 
 return Stats

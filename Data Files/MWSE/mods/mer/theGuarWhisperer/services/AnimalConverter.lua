@@ -9,18 +9,6 @@ local logger = common.log
 ---@class GuarWhisperer.AnimalConverter
 local AnimalConverter = {}
 
----@param obj tes3creature
----@return tes3creature
-local function createCreatureCopy(obj)
-    local newObj = obj:createCopy{}
-    local easyEscort = include("Easy Escort.interop")
-    if easyEscort then
-        logger:info("Adding %s to Easy Escort blacklist", newObj.id)
-        easyEscort.addToBlacklist(newObj.id)
-    end
-    return newObj
-end
-
 ---Override the base object stats
 ---@param baseObject tes3creature
 ---@param convertConfig GuarWhisperer.ConvertConfig
@@ -55,7 +43,7 @@ end
 function AnimalConverter.convert(reference, convertConfig)
     if reference.data.TGW_FLAGGED_FOR_DELETE then return end
     logger:debug("Converting %s into type '%s'", reference.object.id, convertConfig.type)
-    local newObj = createCreatureCopy(reference.baseObject)
+    local newObj = common.createCreatureCopy(reference.baseObject)
     if convertConfig.mesh then
         logger:debug("Replacing mesh with %s", convertConfig.mesh)
         newObj.mesh = convertConfig.mesh
@@ -84,16 +72,17 @@ function AnimalConverter.convert(reference, convertConfig)
         newRef.data.tgw = table.copy(reference.data.tgw)
     end
     reference.data.TGW_FLAGGED_FOR_DELETE = true
-    Animal.initialiseRefData(newRef, convertConfig.type)
     --Remove old ref
     reference:delete()
 
+
+    Animal.initialiseRefData(newRef, convertConfig.type)
+    table.copymissing(newRef.data.tgw, convertConfig.extra)
     local animal = Animal.get(newRef)
     if not animal then
         logger:error("Failed to create animal from reference %s", newRef)
         return
     end
-    table.copymissing(animal.refData, convertConfig.extra)
     if animal.pack:hasPack() then
        animal:setSwitch()
     end

@@ -14,9 +14,8 @@ local function onEquipFlute(e)
         timer.delayOneFrame(function()
             local buttons = {}
             if tes3.player.cell.isInterior ~= true then
-                common.iterateRefType("companion", function(ref)
-                    local animal = Animal.get(ref)
-                    if animal and animal:canBeSummoned() then
+                Animal.referenceManager:iterateReferences(function(_, animal)
+                    if animal:canBeSummoned() then
                         common.log:trace("activateFlute(): %s can be summoned, adding to list", animal:getName())
                         table.insert(buttons, {
                             text = animal:getName(),

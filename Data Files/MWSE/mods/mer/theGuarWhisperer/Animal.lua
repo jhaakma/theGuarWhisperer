@@ -23,12 +23,11 @@
 ---| '"healthOnly"'
 
 ---@class GuarWhisperer.Animal.Home
----@field position number[]
+---@field position { [0]:number, [1]:number, [2]:number}
 ---@field cell string
 
 ---@class GuarWhisperer.Animal.RefData
 ---@field name string
----@field gender GuarWhisperer.Gender
 ---@field attackPolicy GuarWhisperer.Animal.AttackPolicy
 ---@field potionPolicy GuarWhisperer.Animal.PotionPolicy
 ---@field followingRef tes3reference|"player"
@@ -40,10 +39,8 @@
 ---@field stuckStrikes number
 ---@field lastStuckPosition {x:number, y:number, z:number}
 ---@field aiBroken number
----@field lastBirthed number last time it gave birth
 ---@field commandActive boolean is currently doing a command
 ---@field triggerDialog boolean trigger dialog on next activate
----@field ignoreLantern boolean
 
 ---@class GuarWhisperer.Animal
 ---@field refData GuarWhisperer.Animal.RefData
@@ -67,6 +64,7 @@ local common = require("mer.theGuarWhisperer.common")
 local logger = common.log
 local ui = require("mer.theGuarWhisperer.ui")
 local ashfallInterop = include("mer.ashfall.interop")
+local CraftingFramework = require("CraftingFramework")
 local AIFixer = require("mer.theGuarWhisperer.components.AIFixer")
 local Syntax = require("mer.theGuarWhisperer.components.Syntax")
 local Pack = require("mer.theGuarWhisperer.components.Pack")
@@ -108,20 +106,47 @@ Animal.pickableRotations = {
 ---------------------
 --Internal methods
 ---------------------
+
+-- Reference Manager for Animal references
+Animal.referenceManager = CraftingFramework.ReferenceManager:new{
+    id = "GuarWhisperer_Animals",
+    requirements = function(_, ref)
+        return ref.supportsLuaData and ref.data.tgw ~= nil
+    end,
+    onActivated = function(refManager, ref)
+        local animal = Animal:new(ref)
+        if animal then
+            --Cache the animal class
+            refManager.references[ref] = animal
+            --intiialise
+            animal:intialiseOnActivated()
+        else
+            logger:warn("Ref %s with tgw data was not valid animal", ref)
+        end
+    end
+}
+
 ---@param reference tes3reference
 ---@return GuarWhisperer.Animal.RefData
 function Animal.initialiseRefData(reference, animalType)
+    logger:debug("Initialising Ref data for %s", reference)
     local newData = {
         type = animalType,
         level = 1.0,
         attackPolicy = "defend",
         home = {
-            position = reference.position:copy(),
+            position = {
+                reference.position.x,
+                reference.position.y,
+                reference.position.z
+            },
             cell = reference.cell.id
         },
     }
     reference.data.tgw = reference.data.tgw or {}
     table.copymissing(reference.data.tgw, newData)
+    Animal.referenceManager:addReference(reference)
+    Animal.referenceManager:onActivated(reference)
     return reference.data.tgw
 end
 
@@ -136,8 +161,8 @@ end
 ---@param reference tes3reference
 ---@return GuarWhisperer.Animal|nil
 function Animal.get(reference)
-    --TODO - cache with Ref Manager
-    return Animal:new(reference)
+    local cachedAnimal = Animal.referenceManager.references[reference]
+    return cachedAnimal or Animal:new(reference)
 end
 
 
@@ -217,6 +242,21 @@ end
 ---@return GuarWhisperer.Animal.PotionPolicy
 function Animal:getPotionPolicy()
     return self.refData.potionPolicy
+end
+
+
+function Animal:intialiseOnActivated()
+    if not self:isDead() then
+        self:playAnimation("idle")
+        if self.refData.carriedItems then
+            for _, item in pairs(self.refData.carriedItems) do
+                self:putItemInMouth(tes3.getObject(item.id))
+            end
+        end
+        self:setSwitch()
+        self:updateAI()
+        logger:info("intialised %s on activated", self:getName())
+    end
 end
 
 
@@ -405,6 +445,7 @@ function Animal:wait(idles)
 end
 
 --- Wander around
+---@param range number? Default: 500
 function Animal:wander(range)
     if not self.reference.mobile then return end
     logger:debug("Wandering")
@@ -428,12 +469,12 @@ end
 
 
 --- Follow the player
-function Animal:follow()
-    --timer.delayOneFrame(function()
-        logger:debug("Setting AI Follow")
-        self.refData.aiState = "following"
-        tes3.setAIFollow{ reference = self.reference, target = tes3.player }
-    --end)
+---@param target tes3reference?
+function Animal:follow(target)
+    target = target or tes3.player
+    logger:debug("Setting AI Follow")
+    self.refData.aiState = "following"
+    tes3.setAIFollow{ reference = self.reference, target = target }
 end
 
 --- Attack the target
@@ -466,7 +507,6 @@ function Animal:moveToAction(reference, command, noMessage)
     common.fetchItems[reference] = true
     self.reference.mobile.isRunning = true
     self:moveTo(reference.position)
-
     --Start simulate event to check if close enough to the reference
     local previousPosition
     local distanceTimer
@@ -581,11 +621,8 @@ end
 
 --- Move to the given position
 function Animal:moveTo(position)
-    self.reference.mobile.isRunning = true
-    timer.delayOneFrame(function()timer.delayOneFrame(function()
-        tes3.setAITravel{ reference = self.reference, destination = position }
-        self.refData.aiState = "moving"
-    end)end)
+    tes3.setAITravel{ reference = self.reference, destination = position }
+    self.refData.aiState = "moving"
 end
 
 --- Return to the player
@@ -729,8 +766,11 @@ function Animal:removeItemsFromMouth()
     local node = self.reference.sceneNode:getObjectByName("ATTACH_MOUTH")
 
     for _, item in pairs(self.refData.carriedItems) do
-        --detach once per item held
-        node:detachChild(node:getObjectByName("Picked_Up_Item"))
+        local pickedItem = node:getObjectByName("Picked_Up_Item")
+        while pickedItem do
+            node:detachChild(node:getObjectByName("Picked_Up_Item"))
+            pickedItem = node:getObjectByName("Picked_Up_Item")
+        end
         --For ball, equip if unarmed
         if common.balls[item.id:lower()] then
             if tes3.player.mobile.readiedWeapon == nil then
@@ -745,19 +785,18 @@ function Animal:removeItemsFromMouth()
 end
 
 
-function Animal:putItemInMouth(object)
+---@param object tes3object|tes3misc
+---@param node? niNode
+function Animal:putItemInMouth(object, node)
     --attach nif
     -- local objNode = tes3.loadMesh(object.mesh):clone()
     -- local itemNode = niNode.new()
     -- itemNode:attachChild(objNode)
-    local itemNode = tes3.loadMesh(object.mesh):clone()
-
-
+    local itemNode = (node or tes3.loadMesh(object.mesh)):clone()
     itemNode:clearTransforms()
+    itemNode.scale = itemNode.scale * ( 1 / self.reference.scale)
     itemNode.name = "Picked_Up_Item"
     local node = self.reference.sceneNode:getObjectByName("ATTACH_MOUTH")
-
-
     --determine rotation
     --Due to orientation of ponytail bone, item is already rotated 90 degrees
     self.lantern.removeLight(itemNode)
@@ -850,12 +889,11 @@ function Animal:pickUpItem(reference)
     reference:delete()
     tes3.playSound({reference=self.reference , sound="Item Misc Up"})
     self:addToCarriedItems(reference.object.name, reference.object.id, itemCount)
-    self:putItemInMouth(reference.object)
+    self:putItemInMouth(reference.object, reference.sceneNode)
 
     if not tes3.hasOwnershipAccess{target=reference} then
         tes3.triggerCrime{type=tes3.crimeType.theft, victim=tes3.getOwner(reference), value=reference.object.value * itemCount}
     end
-
 end
 
 
@@ -1028,7 +1066,7 @@ function Animal:handOverItems()
 end
 
 function Animal:getCharmModifier()
-    local personality = self.reference.mobile.attributes[tes3.attribute.personality + 1].current
+    local personality = self.stats:getAttribute("personality").current
     return math.log10(personality) * 20
 end
 
@@ -1133,26 +1171,26 @@ function Animal:updateAI()
     local brokenLimit = 2
     self.refData.aiBroken = self.refData.aiBroken or 0
 
-    if  self.refData.aiBroken <= brokenLimit and self.reference.sceneNode and packageId == "-1" then
+    local exceededBrokenLimit = self.refData.aiBroken > brokenLimit
+    local hasSceneNode = self.reference.sceneNode ~= nil
+    local invalidPackageId = packageId == nil or packageId == -1
+    if (not exceededBrokenLimit) and hasSceneNode and invalidPackageId then
         logger:debug("AI Fix: Detected broken AI package")
         self.refData.aiBroken = self.refData.aiBroken + 1
     end
 
-    if self.refData.aiBroken and self.refData.aiBroken > brokenLimit then
+    if exceededBrokenLimit then
         if packageId == tes3.aiPackage.follow then
             logger:debug("AI Fix: AI has been fixed")
             self:moveToAction(tes3.player, "greet", true)
             tes3.messageBox("%s looks like %s really missed you.", self:getName(), self.syntax:getHeShe(true))
             self.refData.aiBroken = nil
         else
-            logger:debug("AI Fix: still broken, attempting to fix by starting combat")
-            local mobile = self.reference.mobile
-
+            logger:warn("AI Fix: still broken, using mwse.memory fix")
             --Magic mwse.memory call to fix guars wandering off
             ---@diagnostic disable: undefined-field
             mwse.memory.writeByte({
-
-                address = mwse.memory.convertFrom.tes3mobileObject(mobile) + 0xC0,
+                address = mwse.memory.convertFrom.tes3mobileObject(self.reference.mobile) + 0xC0,
                 byte = 0x00,
             })
             timer.delayOneFrame(function()
@@ -1180,6 +1218,12 @@ function Animal:updateAI()
             logger:debug("Current AI package: %s", table.find(tes3.aiPackage, packageId) or packageId)
             logger:debug("restoring previous AI after combat")
             self:restorePreviousAI()
+        end
+    elseif aiState == "moving" then
+        if self.reference.mobile.actionData.aiBehaviorState == 255 then
+            logger:debug("Current AI package: %s", table.find(tes3.aiPackage, packageId) or packageId)
+            logger:debug("Setting to wait after moving")
+            self:wait()
         end
     end
     --Check if stuck on something while wandering
@@ -1271,7 +1315,7 @@ function Animal:getMenuTitle()
     local name = self:getName() or "This"
     return string.format(
         "%s is a %s%s %s. %s %s.",
-        name, self.genetics:isBaby() and "baby " or "", self.refData.gender, self.animalType.type,
+        name, self.genetics:isBaby() and "baby " or "", self.genetics:getGender(), self.animalType.type,
         self.syntax:getHeShe(), self.needs:getHappinessStatus().description
     )
 end
@@ -1300,7 +1344,6 @@ function Animal:canTakeAction()
 end
 
 
-
 function Animal:pet()
     logger:debug("Petting")
     self.needs:modAffection(self.animalType.affection.petValue)
@@ -1312,6 +1355,32 @@ function Animal:pet()
     end
 end
 
+function Animal:getRefusalMessage()
+    local messages = {
+        "<name> doesn't want to do that.",
+        "<name> refuses to listen to you.",
+        "Your commands fall on deaf ears.",
+        "<name> ignores you.",
+    }
+    local message = table.choice(messages)
+    message = string.gsub(message, "<name>", self:getName())
+    return message
+end
+
+--- Attempt a command. If this fails, a random message
+--- will display and the animal will wander instead
+---@param min number The minimum value the required happiness will be randomly chosen from
+---@param max number the maximum value the required happiness will be randomly chosen from
+---@return boolean whether the command was successful. If false, the animal will wander
+function Animal:attemptCommand(min, max)
+    local happinessRequired = math.random(min, max)
+    if self.needs:getHappiness() < happinessRequired then
+        tes3.messageBox(self:getRefusalMessage())
+        self:wander()
+        return false
+    end
+    return true
+end
 
 function Animal:feed()
     timer.delayOneFrame(function()
@@ -1340,8 +1409,8 @@ function Animal:feed()
 end
 
 function Animal:rename()
-    local label = self.genetics:isBaby() and string.format("Name your new baby %s %s", self.refData.gender, self.animalType.type) or
-        string.format("Enter the new name of your %s %s:",self.refData.gender, self.animalType.type)
+    local label = self.genetics:isBaby() and string.format("Name your new baby %s %s", self.genetics:getGender(), self.animalType.type) or
+        string.format("Enter the new name of your %s %s:",self.genetics:getGender(), self.animalType.type)
     local renameMenuId = tes3ui.registerID("TheGuarWhisperer_Rename")
 
     local t = {
@@ -1413,10 +1482,6 @@ function Animal:setSwitch()
             --switch has changed, add or remove item meshes
             if packItem.attach then
                 if packItem.light then
-                    if self.refData.ignoreLantern then
-                        node.switchIndex = 0
-                        break
-                    end
                     --attach item
                     local onNode = node.children[2]
                     local lightParent = onNode:getObjectByName("LIGHT")

@@ -17,3 +17,8 @@ version = ">=0.15.0"
 
 [tools.mwse]
 lua-mod = "mer.theGuarWhisperer"
+
+[dependencies.mods."The Crafting Framework"]
+mwse-module = "CraftingFramework"
+version = "^1.17.0"
+url = "https://www.nexusmods.com/morrowind/mods/51009?tab=files"

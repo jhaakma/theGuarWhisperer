@@ -37,7 +37,7 @@ end
 local function getSubtitleText(animal)
     return string.format("Level %d %s %s",
         animal.stats:getLevel(),
-        animal.refData.gender,
+        animal.genetics:getGender(),
         animal.genetics:isBaby() and "(baby)" or ""
     )
 end
@@ -155,6 +155,9 @@ function UI.createTooltip(thisHeader, thisLabel)
     tooltip:updateLayout()
 end
 
+---@param parentBlock tes3uiElement
+---@param animal GuarWhisperer.Animal
+---@param inMenu boolean?
 function UI.createStatsBlock(parentBlock, animal, inMenu)
        --Right side info
        local infoBlock = parentBlock:createBlock{ id = UI.ids.infoBlock }
@@ -175,7 +178,7 @@ function UI.createStatsBlock(parentBlock, animal, inMenu)
             {
                 label = "Happiness",
                 description = "A guar's happiness is determined by all other factors. Keep your guar well fed, pet it and play fetch occasionally. Happiness determines how quickly your guar will trust you.",
-                current = animal.refData.happiness,
+                current = animal.needs:getHappiness(),
                 max = 100,
                 color =  { 0.1, 0.9, 0.1}
             },
@@ -183,14 +186,14 @@ function UI.createStatsBlock(parentBlock, animal, inMenu)
             {
                 label = "Trust",
                 description = "Built trust by spending time with a happy guar. The more your guar trusts you, the more commands you can give it.",
-                current = animal.refData.trust,
+                current = animal.needs:getTrust(),
                 max = 100,
                 color = { 0.2, 0.1, 0.8 }
             },
             {
                 label = "Hunger",
                 description = "Guars love leafy greens. Keep your guar well feed to make them happy and healthy. Guars can eat from your hand, or you can command them to eat directly from a plant.",
-                current = 100 - animal.refData.hunger,
+                current = 100 - animal.needs:getHunger(),
                 max = 100,
                 color = { 0.1, 0.5, 0.5 }
             }
@@ -228,13 +231,13 @@ function UI.createStatsBlock(parentBlock, animal, inMenu)
         for attrName, attribute in pairs(tes3.attribute) do
             local attrBlock = infoBlock:createBlock()
             attrBlock.flowDirection = "left_to_right"
-            attrBlock.layoutWidthFraction = 1.0
+            attrBlock.absolutePosAlignX = 1.0
             attrBlock.autoHeight = true
 
             attrBlock:createLabel{ text = Syntax.capitaliseFirst(attrName) }
             local value = tostring(animal.mobile.attributes[attribute + 1].current)
             local valueLabel =attrBlock:createLabel{ text = value }
-            valueLabel.layoutOriginFractionX = 1.0
+            valueLabel.absolutePosAlignX = 1.0
         end
     end
 end

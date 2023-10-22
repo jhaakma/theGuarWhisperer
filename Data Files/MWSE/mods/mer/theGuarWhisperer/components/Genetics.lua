@@ -134,7 +134,7 @@ function Genetics:getCanConceive()
     if not ( self.animal.refData.gender == "female" ) then return false end
     if self:isBaby() then return false end
     if not self.animal.mobile.hasFreeAction then return false end
-    if self.animal.refData.trust < moodConfig.skillRequirements.breed then return false end
+    if self.animal.needs:getTrust() < moodConfig.skillRequirements.breed then return false end
     if self.animal.refData.lastBirthed then
         local now = common.getHoursPassed()
         local hoursSinceLastBirth = now - self.animal.refData.lastBirthed
@@ -144,13 +144,13 @@ function Genetics:getCanConceive()
     return true
 end
 
----@param animal GuarWhisperer.Animal
+---@param animal GuarWhisperer.Genetics.Animal|GuarWhisperer.Animal
 function Genetics:canBeImpregnatedBy(animal)
     if not animal.animalType.breedable then return false end
     if not (animal.refData.gender == "male" ) then return false end
     if animal.genetics:isBaby() then return false end
     if not animal.mobile.hasFreeAction then return false end
-    if self.animal.refData.trust < moodConfig.skillRequirements.breed then return false end
+    if self.animal.needs:getTrust() < moodConfig.skillRequirements.breed then return false end
     local distance = animal:distanceFrom(self.animal.reference)
     if distance > 1000 then
         return false
@@ -163,8 +163,7 @@ function Genetics:breed()
     ---@type GuarWhisperer.Animal[]
     local partnerList = {}
 
-    common.iterateRefType("companion", function(ref)
-        local animal = self.animal.get(ref)
+    self.animal.referenceManager:iterateReferences(function(_, animal)
         if self:canBeImpregnatedBy(animal) then
             table.insert(partnerList, animal)
         end
@@ -175,10 +174,13 @@ function Genetics:breed()
             partner:playAnimation("pet")
             local baby
             timer.start{ type = timer.real, duration = 1, callback = function()
-                local objectId = self:getWhiteBabyChance() and "mer_tgw_guar_w" or "mer_tgw_guar"
                 self.animal.refData.lastBirthed  = common.getHoursPassed()
+
+                local babyObject = common.createCreatureCopy(self.animal.reference.baseObject)
+                babyObject.name = string.format("%s Jr", self.animal:getName())
+
                 local babyRef = tes3.createReference{
-                    object = objectId,
+                    object = babyObject,
                     position = self.animal.reference.position,
                     orientation =  {
                         self.animal.reference.orientation.x,
@@ -188,22 +190,23 @@ function Genetics:breed()
                     cell = self.animal.reference.cell,
                     scale = self.animal.animalType.babyScale
                 }
-                babyRef.mobile.fight = 0
-                babyRef.mobile.flee = 0
-
-                baby = self.animal:new(babyRef)
-                if baby then
-                    baby.genetics:setIsBaby(true)
-                    baby.needs:setTrust(self.animal.animalType.trust.babyLevel)
-                    baby.genetics:setBirthTime()
-                    --baby:inheritGenes(self, partner)
-                    baby.genetics:updateGrowth()
-                    baby:setHome(baby.reference.position, baby.reference.cell)
-                    baby:setAttackPolicy("defend")
-                    baby:wander()
-                else
-                    --Failed to make baby
-                end
+                timer.delayOneFrame(function()
+                    self.animal.initialiseRefData(babyRef, self.animal.animalType)
+                    baby = self.animal:new(babyRef)
+                    if baby then
+                        baby.genetics:setIsBaby(true)
+                        baby.needs:setTrust(self.animal.animalType.trust.babyLevel)
+                        baby.genetics:setBirthTime()
+                        --baby:inheritGenes(self, partner)
+                        baby.genetics:updateGrowth()
+                        baby:setAttackPolicy("passive")
+                        baby:wander()
+                        babyRef.mobile.fight = 0
+                        babyRef.mobile.flee = 0
+                    else
+                        logger:error("Failed to make baby")
+                    end
+                end)
             end}
             common.fadeTimeOut(0.5, 2, function()
                 timer.delayOneFrame(function()

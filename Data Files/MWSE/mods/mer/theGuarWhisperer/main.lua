@@ -167,18 +167,15 @@ end
 
 local function guarTimer()
     if not common.getModEnabled() then return end
-    common.iterateRefType("companion", function(ref)
-        local animal = Animal.get(ref)
-        if animal then
-            animal:setSwitch()
-            if animal:isActive() then
-                animal.genetics:updateGrowth()
-                animal:updateAI()
-                animal:updateTravelSpells()
-            end
-            animal.needs:updateNeeds()
-            animal:updateCloseDistance()
+    Animal.referenceManager:iterateReferences(function(_, animal)
+        animal:setSwitch()
+        if animal:isActive() then
+            animal.genetics:updateGrowth()
+            animal:updateAI()
+            animal:updateTravelSpells()
         end
+        animal.needs:updateNeeds()
+        animal:updateCloseDistance()
     end)
 end
 
@@ -239,14 +236,13 @@ local function randomActTimer()
     if not common.getModEnabled() then return end
     logger:debug("Random Act Timer")
     local actingRef
-    common.iterateRefType("companion", function(ref)
-        local animal = Animal.get(ref)
-        if animal and animal.mobile then
+    Animal.referenceManager:iterateReferences(function(_, animal)
+        if animal.mobile then
             if animal:isActive() then
                 if animal:getAI() == "wandering" then
                     logger:debug("%s is wandering, deciding action", animal:getName())
-                    if ref.id ~= lastRef then
-                        actingRef = ref.id
+                    if animal.reference.id ~= lastRef then
+                        actingRef = animal.reference.id
                         --check for food to eat
                         if animal.needs:getHunger() > 40 then
                             local food = findFood(animal)
@@ -294,28 +290,12 @@ local function randomActTimer()
         --otherwise block him so others can go
         lastRef = actingRef
     end
-
     timer.start{
         type = timer.simulate,
         iterations = 1,
         duration = math.random(20, 40),
         callback = randomActTimer
     }
-
-end
-
-local function initialiseVisuals()
-    common.iterateRefType("companion", function(ref)
-        local animal = Animal.get(ref)
-        if animal and not animal:isDead() then
-            animal:playAnimation("idle")
-            if animal.refData.carriedItems then
-                for _, item in pairs(animal.refData.carriedItems) do
-                    animal:putItemInMouth(tes3.getObject(item.id))
-                end
-            end
-        end
-    end)
 end
 
 local function startTimers()
@@ -336,7 +316,7 @@ end
 --Iterate over active animals
 local function onDataLoaded()
     commandMenu:destroy()
-    initialiseVisuals()
+    --initialiseVisuals()
     startTimers()
     --mwscript.addTopic{ topic = "raising guars" }
 end

@@ -311,19 +311,6 @@ function this.fadeTimeOut( hoursPassed, secondsTaken, callback )
     })
 end
 
-local refController = require("mer.theGuarWhisperer.referenceController")
-function this.iterateRefType(refType, callback)
-    for ref, _ in pairs(refController.controllers[refType].references) do
-        --check requirements in case it's no longer valid
-        if refController.controllers[refType]:requirements(ref) then
-            if callback(ref) == false then break end
-        else
-            --no longer valid, remove from ref list
-            refController.controllers[refType].references[ref] = nil
-        end
-    end
-end
-
 local function onLoadInitialiseRefs(e)
     this.log:debug("\n\nInitialising companion refs")
     for i, cell in ipairs(tes3.dataHandler.nonDynamicData.cells) do
@@ -333,5 +320,18 @@ local function onLoadInitialiseRefs(e)
     end
 end
 event.register("loaded", onLoadInitialiseRefs)
+
+---@param obj tes3creature
+---@return tes3creature
+function this.createCreatureCopy(obj)
+    local newObj = obj:createCopy{}
+    local easyEscort = include("Easy Escort.interop")
+    if easyEscort then
+        this.log:info("Adding %s to Easy Escort blacklist", newObj.id)
+        easyEscort.addToBlacklist(newObj.id)
+    end
+    return newObj
+end
+
 
 return this
