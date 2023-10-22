@@ -3,6 +3,8 @@
 ---| '"sad"'
 ---| '"pet"'
 ---| '"eat"'
+---| '"fetch"'
+---| '"idle"'
 
 ---@alias GuarWhisperer.Animal.AIState
 ---| '"waiting"' #Not moving, doing nothing
@@ -20,11 +22,6 @@
 ---| '"all"'
 ---| '"healthOnly"'
 
----@alias GuarWhisperer.Gender
----|'"male"' Male
----|'"female"' Female
----|'"none"' No gender
-
 ---@class GuarWhisperer.Animal.Home
 ---@field position number[]
 ---@field cell string
@@ -32,29 +29,17 @@
 ---@class GuarWhisperer.Animal.RefData
 ---@field name string
 ---@field gender GuarWhisperer.Gender
----@field trust number
----@field affection number
----@field play number
----@field happiness number
----@field hunger number
----@field level number
 ---@field attackPolicy GuarWhisperer.Animal.AttackPolicy
 ---@field potionPolicy GuarWhisperer.Animal.PotionPolicy
 ---@field followingRef tes3reference|"player"
 ---@field aiState GuarWhisperer.Animal.AIState
 ---@field previousAiState GuarWhisperer.Animal.AIState
 ---@field home GuarWhisperer.Animal.Home
----@field hasPack boolean has a backpack equipped
----@field isBaby boolean is a baby
----@field birthTime number
----@field lanternOn boolean Lantern is turned on
 ---@field dead boolean is dead
 ---@field carriedItems table<string, {name:string, id:string, count:number, itemData:tes3itemData}>
----@field lastUpdated number
 ---@field stuckStrikes number
 ---@field lastStuckPosition {x:number, y:number, z:number}
 ---@field aiBroken number
----@field attributes table<string, number>
 ---@field lastBirthed number last time it gave birth
 ---@field commandActive boolean is currently doing a command
 ---@field triggerDialog boolean trigger dialog on next activate
@@ -71,19 +56,24 @@
 ---@field aiFixer GuarWhisperer.AIFixer
 ---@field pack GuarWhisperer.Pack
 ---@field syntax GuarWhisperer.Syntax
+---@field genetics GuarWhisperer.Genetics
+---@field lantern GuarWhisperer.Lantern
+---@field needs GuarWhisperer.Needs
 local Animal = {}
 
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
 local harvest = require("mer.theGuarWhisperer.harvest")
-local moodConfig = require("mer.theGuarWhisperer.moodConfig")
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.log
 local ui = require("mer.theGuarWhisperer.ui")
 local ashfallInterop = include("mer.ashfall.interop")
-local AIFixer = require("mer.theGuarWhisperer.services.AIFixer")
-local Syntax = require("mer.theGuarWhisperer.services.Syntax")
-local Pack = require("mer.theGuarWhisperer.services.Pack")
-local Stats = require("mer.theGuarWhisperer.services.Stats")
+local AIFixer = require("mer.theGuarWhisperer.components.AIFixer")
+local Syntax = require("mer.theGuarWhisperer.components.Syntax")
+local Pack = require("mer.theGuarWhisperer.components.Pack")
+local Stats = require("mer.theGuarWhisperer.components.Stats")
+local Genetics = require("mer.theGuarWhisperer.components.Genetics")
+local Lantern = require("mer.theGuarWhisperer.components.Lantern")
+local Needs = require("mer.theGuarWhisperer.components.Needs")
 
 ---@type table<tes3.objectType, boolean>
 Animal.pickableObjects = {
@@ -120,43 +110,19 @@ Animal.pickableRotations = {
 ---------------------
 ---@param reference tes3reference
 ---@return GuarWhisperer.Animal.RefData
-local function initialiseRefData(reference)
-    if reference.data.tgw then return reference.data.tgw end
-    math.randomseed(os.time())
-    reference.data.tgw = {
-        name = "Tamed Guar",
-        gender = math.random() < 0.55 and "male" or "female",
-        birthTime = common.getHoursPassed(),
-        trust = moodConfig.defaultTrust,
-        affection = moodConfig.defaultAffection,
-        play = moodConfig.defaultPlay,
-        happiness = 0,
-        hunger = 50,
+function Animal.initialiseRefData(reference, animalType)
+    local newData = {
+        type = animalType,
         level = 1.0,
         attackPolicy = "defend",
+        home = {
+            position = reference.position:copy(),
+            cell = reference.cell.id
+        },
     }
+    reference.data.tgw = reference.data.tgw or {}
+    table.copymissing(reference.data.tgw, newData)
     return reference.data.tgw
-end
-
-local function isValidRef(reference)
-    if not reference then
-        logger:debug("No reference")
-        return false
-    end
-    local refObj = reference.baseObject or reference.object
-    if not refObj then
-        logger:debug("ref doesn't have an object")
-        return false
-    end
-    local isAGuar = (
-        (refObj.id == animalConfig.guarMapper.standard) or
-        (refObj.id == animalConfig.guarMapper.white)
-    )
-    if not isAGuar then
-        logger:trace("Not a guar")
-        return false
-    end
-    return true
 end
 
 ---------------------
@@ -170,70 +136,46 @@ end
 ---@param reference tes3reference
 ---@return GuarWhisperer.Animal|nil
 function Animal.get(reference)
+    --TODO - cache with Ref Manager
     return Animal:new(reference)
 end
 
----Get the animal type and extra data for a given vanilla
---- guar reference.
----@return GuarWhisperer.ConvertData?
-function Animal.getConvertData(reference)
-    logger:trace("Get convert data")
-    if not reference then
-        logger:trace("No reference")
-        return nil
-    end
-    if not reference.mobile then
-        logger:trace("No mobile")
-        return nil
-    end
-    if not (reference.object.objectType == tes3.objectType.creature) then
-        logger:trace("Not a creature")
-        return nil
-    end
-    local crMesh = reference.object.mesh:lower()
-    logger:trace("Finding type for mesh %s", crMesh)
-    local typeData = animalConfig.meshes[crMesh]
-    if typeData then
-        return typeData
-    else
-        logger:trace("No type data")
-        return nil
-    end
-end
 
 --- Get the animal type for a converter guar
 ---@param reference tes3reference
 ---@return GuarWhisperer.AnimalType?
 function Animal.getAnimalType(reference)
-    return animalConfig.animals.guar
+    return reference
+     and reference.data.tgw
+     and animalConfig.animals[reference.data.tgw.type]
+     or animalConfig.animals.guar
 end
-
 
 --- Construct a new Animal
 ---@param reference tes3reference
 ---@return GuarWhisperer.Animal|nil
 function Animal:new(reference)
-    logger:trace("Animal:new")
-    if not isValidRef(reference) then
-        logger:trace("Not valid")
-        return
-    end
+    if not (reference and reference.supportsLuaData and reference.data.tgw) then return end
     local animalType = Animal.getAnimalType(reference)
     if not animalType then
         logger:trace("No animal type")
         return
     end
+
     local newAnimal = {
         reference = reference,
         object = reference.object,
         mobile = reference.mobile,
         animalType = animalType,
-        refData = initialiseRefData(reference),
+        refData = reference.data.tgw,
     }
     newAnimal.stats = Stats.new(newAnimal)
     newAnimal.aiFixer = AIFixer.new(newAnimal)
     newAnimal.pack = Pack.new(newAnimal)
     newAnimal.syntax = Syntax.new(newAnimal.refData.gender)
+    newAnimal.genetics = Genetics.new(newAnimal)
+    newAnimal.lantern = Lantern.new(newAnimal)
+    newAnimal.needs = Needs.new(newAnimal)
 
     setmetatable(newAnimal, self)
     self.__index = self
@@ -245,16 +187,11 @@ end
 --- Get the animals' name
 ---@return string
 function Animal:getName()
-    return self.refData.name
+    return self.reference.baseObject.name
 end
 
 function Animal:setName(newName)
-    self.refData.name = newName
-end
-
----@return "male"|"female"
-function Animal:getGender()
-    return self.refData.gender
+    self.reference.baseObject.name = newName
 end
 
 
@@ -336,9 +273,7 @@ end
 
 --- Teleport if too far away while following
 function Animal:closeTheDistanceTeleport()
-    if self.reference.mobile.inCombat then
-        return
-    elseif tes3.player.cell.isInterior then
+    if tes3.player.cell.isInterior then
         return
     elseif self:getAI() ~= "following" then
         return
@@ -361,27 +296,32 @@ function Animal:teleportToPlayer(distance)
     distance = distance or 0
     local isForward = distance >= 0
     logger:debug("teleportToPlayer(): Distance: %s", distance)
-    local target = tes3.player
+
+    local eyeVec = tes3.getPlayerEyeVector()
+    local position = tes3.getPlayerEyePosition()
+    local direction = tes3vector3.new(
+        eyeVec.x,
+        eyeVec.y,
+        0) * (isForward and -1 or 1)
+
+
     --do a raytest to avoid teleporting into stuff
-    local oldCulledValue = target.sceneNode.appCulled
-    target.sceneNode.appCulled = true
     ---@type niPickRecord
     local rayResult = tes3.rayTest{
-        position = target.position,
-        direction = target.orientation * (isForward and -1 or 1),
+        position = position,
+        direction = direction,
         maxDistance = math.abs(distance),
-        ignore = {target, self.reference}
+        ignore = {tes3.player, self.reference}
     }
-    target.sceneNode.appCulled = oldCulledValue
-
-    if rayResult and rayResult.distance then
+    if rayResult and rayResult.intersection then
         distance = math.min(distance, rayResult.distance)
+        logger:debug("Hit %s, new distance: %s", rayResult.object, distance)
     end
 
     local newPosition = tes3vector3.new(
-        target.position.x + ( distance * math.sin(target.orientation.z)),
-        target.position.y + ( distance * math.cos(target.orientation.z)),
-        target.position.z
+        tes3.player.position.x + ( distance * math.sin(tes3.player.orientation.z)),
+        tes3.player.position.y + ( distance * math.cos(tes3.player.orientation.z)),
+        tes3.player.position.z
     )
 
     --Drop to ground
@@ -390,7 +330,7 @@ function Animal:teleportToPlayer(distance)
             position = newPosition,
             direction = tes3vector3.new(0, 0, -1),
             maxDistance = 5000,
-            ignore = {target, self.reference}
+            ignore = {tes3.player, self.reference}
         }
         --no down result, try up result
         if not (upDownResult and upDownResult.intersection) then
@@ -398,7 +338,7 @@ function Animal:teleportToPlayer(distance)
                 position = newPosition,
                 direction = tes3vector3.new(0, 0, 1),
                 maxDistance = 5000,
-                ignore = {target, self.reference},
+                ignore = {tes3.player, self.reference},
                 useBackTriangles = true
             }
         end
@@ -433,7 +373,7 @@ function Animal:teleportToPlayer(distance)
     tes3.positionCell{
         reference = self.reference,
         position = newPosition,
-        cell = target.cell
+        cell = tes3.player.cell
     }
     self.reference.sceneNode:update()
     self.reference.sceneNode:updateEffects()
@@ -566,7 +506,7 @@ function Animal:moveToAction(reference, command, noMessage)
                     if command == "eat" then
                         self:playAnimation("eat")
                     elseif command == "greet" then
-                        self:modPlay(self.animalType.play.greetValue)
+                        self.needs:modPlay(self.animalType.play.greetValue)
                         self:playAnimation("pet")
                         tes3.playAnimation{
                             reference = reference,
@@ -740,7 +680,7 @@ end
 function Animal:canBeSummoned()
     return (
         self:isDead() ~= true and
-        self:hasSkillReqs("follow")
+        self.needs:hasSkillReqs("follow")
     )
 end
 
@@ -770,9 +710,7 @@ function Animal:canFetch(reference)
     )
 end
 
-function Animal:hasSkillReqs(skill)
-    return self.refData.trust > moodConfig.skillRequirements[skill]
-end
+
 
 function Animal:addToCarriedItems(name, id, count)
     self.refData.carriedItems = self.refData.carriedItems or {}
@@ -794,7 +732,7 @@ function Animal:removeItemsFromMouth()
         --detach once per item held
         node:detachChild(node:getObjectByName("Picked_Up_Item"))
         --For ball, equip if unarmed
-        if item.name == common.ballId then
+        if common.balls[item.id:lower()] then
             if tes3.player.mobile.readiedWeapon == nil then
                 timer.delayOneFrame(function()
                     logger:debug("Re-equipping ball")
@@ -822,7 +760,7 @@ function Animal:putItemInMouth(object)
 
     --determine rotation
     --Due to orientation of ponytail bone, item is already rotated 90 degrees
-    Animal.removeLight(itemNode)
+    self.lantern.removeLight(itemNode)
     --remove collision
     for node in table.traverse{itemNode} do
         if node:isInstanceOfType(tes3.niType.RootCollisionNode) then
@@ -889,8 +827,6 @@ function Animal:pickUpItem(reference)
             reference.object.objectType == tes3.objectType.armor and
             reference.object.slot == tes3.armorSlot.boots
         )
-
-
         tes3.addItem{
             reference = self.reference,
             item = reference.object,
@@ -899,15 +835,15 @@ function Animal:pickUpItem(reference)
             count =  1
         }
         if isBoots then
-            logger:debug("Ruining boots")
             if not itemData then
                 itemData = tes3.addItemData{
                     to = self.reference,
                     item = reference.object,
                     updateGUI = false
                 }
-                itemData.condition = 0
             end
+            logger:debug("Ruining boots")
+            itemData.condition = 0
         end
     end
     reference.itemData = nil
@@ -924,7 +860,7 @@ end
 
 
 function Animal:processFood(amount)
-    self:modHunger(amount)
+    self.needs:modHunger(amount)
 
     --Eating restores health as a % of base health
     local healthCurrent = self.mobile.health.current
@@ -942,8 +878,9 @@ function Animal:processFood(amount)
         current = healthFromFood
     }
 
-    if self.refData.trust < moodConfig.skillRequirements.follow then
-        self:modTrust(3)
+    --Before guar is willing to follow, feeding increases trust
+    if not self.needs:hasSkillReqs("follow") then
+        self.needs:modTrust(3)
     end
 end
 
@@ -1056,7 +993,7 @@ function Animal:handOverItems()
             playSound=false,
         }
         --For ball, equip if unarmed
-        if string.lower(item.id) == common.ballId then
+        if common.balls[item.id:lower()] then
             if tes3.player.mobile.readiedWeapon == nil then
                 timer.delayOneFrame(function()
                     logger:debug("Re-equipping ball")
@@ -1084,7 +1021,7 @@ function Animal:handOverItems()
     self.refData.carriedItems = nil
 
     --make happier
-    self:modPlay(self.animalType.play.fetchValue)
+    self.needs:modPlay(self.animalType.play.fetchValue)
     timer.delayOneFrame(function()
         self:playAnimation("happy")
     end)
@@ -1104,136 +1041,6 @@ function Animal:charm(ref)
 end
 
 
-
-
-
------------------------------------------
---Mood mechanics
------------------------------------------
-
-
-function Animal:modTrust(amount)
-    local previousTrust = self.refData.trust
-    self.refData.trust = math.clamp(self.refData.trust + amount, 0, 100)
-    self.reference.mobile.fight = 50 - (self.refData.trust / 2 )
-
-
-    local afterTrust = self.refData.trust
-    for _, trustData in ipairs(moodConfig.trust) do
-        if previousTrust < trustData.minValue and afterTrust > trustData.minValue then
-            local message = string.format("%s %s. ",
-                self:getName(), trustData.description)
-            if trustData.skillDescription then
-                message = message .. string.format("%s %s",
-                    self.syntax:getHeShe(), trustData.skillDescription)
-            end
-            timer.delayOneFrame(function()
-                tes3.messageBox{ message = message, buttons = {"Okay"} }
-            end)
-        end
-    end
-    tes3ui.refreshTooltip()
-    return self.refData.trust
-end
-
-function Animal:modPlay(amount)
-    self.refData.play = math.clamp(self.refData.play + amount, 0, 100)
-    tes3ui.refreshTooltip()
-    return self.refData.play
-end
-
-function Animal:modAffection(amount)
-    --As he gains affection, his fight level decreases
-    if amount > 0 then
-        self.mobile.fight = self.mobile.fight - math.min(amount, 100 - self.refData.affection)
-    end
-    self.refData.affection = math.clamp(self.refData.affection + amount, 0, 100)
-    return self.refData.affection
-end
-
-function Animal:modHunger(amount)
-    local previousMood = self:getMood("hunger")
-    self.refData.hunger = math.clamp(self.refData.hunger + amount, 0, 100)
-    local newMood = self:getMood("hunger")
-    if newMood ~= previousMood then
-        tes3.messageBox("%s is %s.", self:getName(), newMood.description)
-    end
-
-    tes3ui.refreshTooltip()
-end
-
-function Animal:getMood(moodType)
-    for _, mood in ipairs(moodConfig[moodType]) do
-        if self.refData[moodType] <= mood.maxValue then
-            return mood
-        end
-    end
-end
-
-function Animal:updatePlay(timeSinceUpdate)
-    local changeAmount = self.animalType.play.changePerHour * timeSinceUpdate
-    self:modPlay(changeAmount)
-end
-
-function Animal:updateAffection(timeSinceUpdate)
-    local changeAmount = self.animalType.affection.changePerHour * timeSinceUpdate
-    self:modAffection(changeAmount)
-end
-
-function Animal:updateHunger(timeSinceUpdate)
-    local changeAmount = self.animalType.hunger.changePerHour * timeSinceUpdate
-    self:modHunger(changeAmount)
-end
-
-function Animal:updateTrust(timeSinceUpdate)
-    --No trust from sleeping/waiting because that's lame
-    if tes3ui.menuMode() or tes3.player.mobile.restHoursRemaining > 0 then return end
-    --Trust changes if nearby
-    local happinessMulti = math.remap(self.refData.happiness, 0, 100, -1.0, 1.0)
-    local trustChangeAmount = (
-        self.animalType.trust.changePerHour *
-        happinessMulti *
-        timeSinceUpdate
-    )
-    self:modTrust(trustChangeAmount)
-end
-
-
-function Animal:updateHappiness()
-    local healthRatio = self.reference.mobile.health.current / self.reference.mobile.health.base
-    local hunger = math.remap(self.refData.hunger, 0, 100, 0, 15)
-    local comfort = math.remap(healthRatio, 0, 1.0, 0, 25 )
-    local affection = math.remap(self.refData.affection, 0, 100, 0, 25)
-    local play = math.remap(self.refData.play, 0, 100, 0, 15)
-    local trust = math.remap(self.refData.trust, 0, 100, 0, 15)
-    self.reference.mobile.flee = 50 - (self.refData.happiness / 2)
-
-    local newHappiness = hunger + comfort + affection + play + trust
-    self.refData.happiness = newHappiness
-    tes3ui.refreshTooltip()
-end
-
-
-function Animal:updateMood()
-
-    --get the time since last updated
-    local now = common.getHoursPassed()
-    if not self:isActive() then
-        --not active, reset time
-
-        self.refData.lastUpdated = now
-        return
-    end
-    local lastUpdated = self.refData.lastUpdated or now
-    local timeSinceUpdate = now - lastUpdated
-
-    self:updatePlay(timeSinceUpdate)
-    self:updateAffection(timeSinceUpdate)
-    self:updateHappiness()
-    self:updateHunger(timeSinceUpdate)
-    self:updateTrust(timeSinceUpdate)
-    self.refData.lastUpdated = now
-end
 
 function Animal:isActive()
     return (
@@ -1273,7 +1080,6 @@ function Animal:getIsStuck()
                 local distance = self.reference.position:distance(lastStuckPosition)
                 if distance < maxDistance then
                     self.refData.stuckStrikes = self.refData.stuckStrikes + 1
-
                 else
                     self.refData.stuckStrikes = 0
                 end
@@ -1285,6 +1091,7 @@ function Animal:getIsStuck()
 
     if self.refData.stuckStrikes >= strikesNeeded then
         self.refData.stuckStrikes = 0
+        logger:debug("Guar is stuck")
         return true
     else
         return false
@@ -1302,7 +1109,8 @@ function Animal:updateCloseDistance()
         local distance = self:distanceFrom(tes3.player)
         local teleportDist = common.getConfig().teleportDistance
         --teleport if too far away
-        if distance > teleportDist then
+
+        if distance > teleportDist and not self.reference.mobile.inCombat then
             --dont' teleport if fetching (unless stuck)
             if not self:hasItems() then
                 self:closeTheDistanceTeleport()
@@ -1310,11 +1118,9 @@ function Animal:updateCloseDistance()
         end
         --teleport if stuck and kinda far away
         local isStuck = self:getIsStuck()
-        if isStuck then
-            if distance > teleportDist / 2 then
-                logger:debug("%s Stuck while following: teleport", self:getName())
-                self:closeTheDistanceTeleport()
-            end
+        if isStuck and (distance > teleportDist / 2) then
+            logger:debug("%s Stuck while following: teleport", self:getName())
+            self:closeTheDistanceTeleport()
         end
     end
 end
@@ -1465,8 +1271,8 @@ function Animal:getMenuTitle()
     local name = self:getName() or "This"
     return string.format(
         "%s is a %s%s %s. %s %s.",
-        name, self.refData.isBaby and "baby " or "", self.refData.gender, self.animalType.type,
-        self.syntax:getHeShe(), self:getMood("happiness").description
+        name, self.genetics:isBaby() and "baby " or "", self.refData.gender, self.animalType.type,
+        self.syntax:getHeShe(), self.needs:getHappinessStatus().description
     )
 end
 
@@ -1497,12 +1303,12 @@ end
 
 function Animal:pet()
     logger:debug("Petting")
-    self:modAffection(30)
-    tes3.messageBox(self:getMood("affection").pettingResult(self) )
+    self.needs:modAffection(self.animalType.affection.petValue)
+    tes3.messageBox(self.needs:getAffectionStatus().pettingResult(self) )
     self:playAnimation("pet")
     self:takeAction(2)
-    if self.refData.trust < moodConfig.skillRequirements.follow then
-        self:modTrust(2)
+    if not self.needs:hasSkillReqs("follow") then
+        self.needs:modTrust(2)
     end
 end
 
@@ -1533,8 +1339,8 @@ function Animal:feed()
     end)
 end
 
-function Animal:rename(isBaby)
-    local label = isBaby and string.format("Name your new baby %s %s", self.refData.gender, self.animalType.type) or
+function Animal:rename()
+    local label = self.genetics:isBaby() and string.format("Name your new baby %s %s", self.refData.gender, self.animalType.type) or
         string.format("Enter the new name of your %s %s:",self.refData.gender, self.animalType.type)
     local renameMenuId = tes3ui.registerID("TheGuarWhisperer_Rename")
 
@@ -1571,295 +1377,11 @@ function Animal:rename(isBaby)
 end
 
 
--------------------------------------
--- Genetics Funcitons
---------------------------------------
-
-function Animal:updateGrowth()
-    local age = common.getHoursPassed() - self.refData.birthTime
-    if self.refData.isBaby then
-        if age > self.animalType.hoursToMature then
-            --No longer a baby, turn into an adult
-            self.refData.isBaby = false
-            if not self:getName() then
-                self:setName(self.reference.object.name)
-            end
-            self.reference.scale = 1
-        else
-            --map scale to age
-            local newScale = math.remap(age, 0,  self.animalType.hoursToMature, self.animalType.babyScale, 1)
-            self.reference.scale = newScale
-        end
-        self:scaleAttributes()
-    end
-end
-
-
---Scales attributes based on physical scale
---at 0.5 scale, attributes are half of adult ones etc
-function Animal:scaleAttributes()
-    if not self.refData.attributes then self:randomiseGenes() end
-    local scale = self.reference.scale
-    for attrName, attribute in pairs(tes3.attribute) do
-        local newValue = self.refData.attributes[attribute + 1]
-        --Speed is actually faster for babies
-        if attrName ~= "speed" then
-            newValue = newValue * scale
-        else
-            newValue = newValue * ( 1 / scale )
-        end
-        newValue = math.floor(newValue)
-        tes3.setStatistic{
-            reference = self.reference,
-            name = attrName,
-            value = newValue
-        }
-    end
-    tes3.setStatistic{
-        reference = self.reference,
-        name = "health",
-        base = 100 * scale
-    }
-    if self.reference.mobile.health.current > self.reference.mobile.health.base then
-        tes3.setStatistic{
-            reference = self.reference,
-            name = "health",
-            current = 100 * scale
-        }
-    end
-end
-
---Averages the attributes of mom and dad and adds some random mutation
---Stores them on refData so they can be scaled down during adolescence
-function Animal:inheritGenes(mom, dad)
-    self.refData.attributes = {}
-    for _, attribute in pairs(tes3.attribute) do
-        --get base values of parents
-        local momVal = mom.mobile.attributes[attribute + 1].base
-        local dadVal = dad.mobile.attributes[attribute + 1].base
-        --find the average between them
-        local average = (momVal + dadVal) / 2
-        --mutation range is 1/10th of average, so higher values = more mutation
-        local mutationRange = math.clamp(average * 0.1, 5, 50)
-        local mutation = math.random(-mutationRange, mutationRange)
-        local finalValue = math.floor(average + mutation)
-        finalValue = math.max(finalValue, 0)
-
-        self.refData.attributes[attribute + 1] = finalValue
-    end
-end
-
-function Animal:randomiseGenes()
-    --For converting guars, we get its genetics by treating itself as its parents
-    --Which randomises its attributes, then updateGrowth should apply to the object
-    self:inheritGenes(self.reference, self.reference)
-end
-
-function Animal.getWhiteBabyChance()
-    local chanceOutOf = 50
-    local merlordESPs = {
-        "Ashfall.esp",
-        "BardicInspiration.esp",
-        "Character Backgrounds.esp",
-        "DemonOfKnowledge.esp",
-        "Go Fletch.esp",
-        "Love_Pillow_Hunt.esp",
-        "theMidnightOil.ESP"
-    }
-    local merlordMWSEs = {
-        "backstab",
-        "BedBuddies",
-        "BookWorm",
-        "class-description",
-        "KillCommand",
-        "MarksmanRebalanced",
-        "Mining",
-        "MiscMates",
-        "NoCombatMenu",
-        "QuickLoadouts",
-        "RealisticRepair",
-        "StartingEquipment",
-        "lessAggressiveCreatures",
-        "accidentalTheftProtection"
-    }
-    for _, esp in ipairs(merlordESPs) do
-        if tes3.isModActive(esp) then
-            chanceOutOf = chanceOutOf - 1
-        end
-    end
-    for _, mod in ipairs(merlordMWSEs) do
-        if tes3.getFileExists(string.format("MWSE\\mods\\mer\\%s\\main.lua", mod)) then
-            chanceOutOf = chanceOutOf - 1
-        end
-    end
-    local roll = math.random(chanceOutOf)
-    return roll == 1
-end
-
-function Animal:getCanConceive()
-    if not self.animalType.breedable then return false end
-    if not ( self.refData.gender == "female" ) then return false end
-    if self.refData.isBaby then return false end
-    if not self.mobile.hasFreeAction then return false end
-    if self.refData.trust < moodConfig.skillRequirements.breed then return false end
-    if self.refData.lastBirthed then
-        local now = common.getHoursPassed()
-        local hoursSinceLastBirth = now - self.refData.lastBirthed
-        local enoughTimePassed = hoursSinceLastBirth > self.animalType.birthIntervalHours
-        if not enoughTimePassed then return false end
-    end
-    return true
-end
-
-function Animal:canBeImpregnatedBy(animal)
-    if not animal.animalType.breedable then return false end
-    if not (animal.refData.gender == "male" ) then return false end
-    if animal.refData.isBaby then return false end
-    if not animal.mobile.hasFreeAction then return false end
-    if self.refData.trust < moodConfig.skillRequirements.breed then return false end
-    local distance = animal:distanceFrom(self.reference)
-    if distance > 1000 then
-        return false
-    end
-    return true
-end
-
-
-
-function Animal:breed()
-    --Find nearby animal
-    ---@type GuarWhisperer.Animal[]
-    local partnerList = {}
-
-    common.iterateRefType("companion", function(ref)
-        local animal = Animal:new(ref)
-        if self:canBeImpregnatedBy(animal) then
-            table.insert(partnerList, animal)
-        end
-    end)
-
-    if #partnerList > 0 then
-        local function doBreed(partner)
-            partner:playAnimation("pet")
-            local baby
-            timer.start{ type = timer.real, duration = 1, callback = function()
-                local color = self:getWhiteBabyChance() and "white" or "standard"
-                self.refData.lastBirthed  = common.getHoursPassed()
-                local babyRef = tes3.createReference{
-                    object = animalConfig.guarMapper[color],
-                    position = self.reference.position,
-                    orientation =  {
-                        self.reference.orientation.x,
-                        self.reference.orientation.y,
-                        self.reference.orientation.z,
-                    },
-                    cell = self.reference.cell,
-                    scale = self.animalType.babyScale
-                }
-                babyRef.mobile.fight = 0
-                babyRef.mobile.flee = 0
-
-                baby = Animal:new(babyRef)
-                if baby then
-                    baby.refData.isBaby = true
-                    baby.refData.trust = self.animalType.trust.babyLevel
-                    --baby:inheritGenes(self, partner)
-                    baby:updateGrowth()
-                    baby:setHome(baby.reference.position, baby.reference.cell)
-                    baby:setAttackPolicy("defend")
-                    baby:wander()
-                else
-                    --Failed to make baby
-                end
-            end}
-
-            common.fadeTimeOut(0.5, 2, function()
-                timer.delayOneFrame(function()
-                    if baby then
-                        baby:rename(true)
-                    end
-                end)
-            end)
-        end
-        local buttons = {}
-        local i = 1
-        ---@param partner GuarWhisperer.Animal
-        for _, partner in ipairs(partnerList) do
-            table.insert(buttons,
-                {
-                    text = string.format("%d. %s", i, partner:getName() ),
-                    callback = function()
-                        doBreed(partner)
-                    end
-                }
-            )
-        end
-        table.insert( buttons, { text = "Cancel"})
-
-        common.messageBox{
-            message = string.format("Which partner would you like to breed %s with?", self:getName() ),
-            buttons = buttons
-        }
-    else
-        tes3.messageBox("There are no valid partners nearby.")
-    end
-end
-
-
 
 ------------------------------------------
 -- Switch node pack functions
 --------------------------------------------
 
-function Animal.removeLight(lightNode)
-    for node in table.traverse{lightNode} do
-        --Kill particles
-        if node.RTTI.name == "NiBSParticleNode" then
-            --node.appCulled = true
-            node.parent:detachChild(node)
-        end
-        --Kill Melchior's Lantern glow effect
-        if node.name == "LightEffectSwitch" or node.name == "Glow" then
-            --node.appCulled = true
-            node.parent:detachChild(node)
-        end
-        if node.name == "AttachLight" then
-            --node.appCulled = true
-            node.parent:detachChild(node)
-        end
-
-        -- Kill materialProperty
-        local materialProperty = node:getProperty(0x2)
-        if materialProperty then
-            if (materialProperty.emissive.r > 1e-5 or materialProperty.emissive.g > 1e-5 or materialProperty.emissive.b > 1e-5 or materialProperty.controller) then
-                materialProperty = node:detachProperty(0x2):clone()
-                node:attachProperty(materialProperty)
-
-                -- Kill controllers
-                materialProperty:removeAllControllers()
-
-                -- Kill emissives
-                local emissive = materialProperty.emissive
-                emissive.r, emissive.g, emissive.b = 0,0,0
-                materialProperty.emissive = emissive
-
-                node:updateProperties()
-            end
-        end
-     -- Kill glowmaps
-        local texturingProperty = node:getProperty(0x4)
-        local newTextureFilepath = "Textures\\tx_black_01.dds"
-        if (texturingProperty and texturingProperty.maps[4]) then
-        texturingProperty.maps[4].texture = niSourceTexture.createFromPath(newTextureFilepath)
-        end
-        if (texturingProperty and texturingProperty.maps[5]) then
-            texturingProperty.maps[5].texture = niSourceTexture.createFromPath(newTextureFilepath)
-        end
-    end
-    lightNode:update()
-    lightNode:updateEffects()
-
-end
 
 function Animal:getHeldItem(packItem)
     for _, item in ipairs(packItem.items) do
@@ -1869,72 +1391,6 @@ function Animal:getHeldItem(packItem)
     end
 end
 
-
-function Animal:attachLantern(lanternObj)
-    local lanternParent = self.reference.sceneNode:getObjectByName("LANTERN")
-    --get lantern mesh and attach
-    local itemNode = tes3.loadMesh(lanternObj.mesh):clone()
-    --local attachLight = itemNode:getObjectByName("AttachLight")
-    --attachLight.parent:detachChild(attachLight)
-    itemNode:clearTransforms()
-    itemNode.name = lanternObj.id
-    lanternParent:attachChild(itemNode, true)
-end
-
-function Animal:detachLantern()
-    local lanternParent = self.reference.sceneNode:getObjectByName("LANTERN")
-    lanternParent:detachChildAt(1)
-end
-
-
-function Animal:turnLanternOn(e)
-    e = e or {}
-    if not self.reference.sceneNode then return end
-    --First we gotta delete the old one and clone again, to get our material properties back
-    local lanternParent = self.reference.sceneNode:getObjectByName("LANTERN")
-    if lanternParent and lanternParent.children and #lanternParent.children > 0 then
-        local lanternId = lanternParent.children[1].name
-        self:detachLantern()
-        self:attachLantern(tes3.getObject(lanternId))
-
-        local lightParent = self.reference.sceneNode:getObjectByName("LIGHT")
-        lightParent.translation.z = 0
-
-        local lightNode = self.reference.sceneNode:getObjectByName("LanternLight")
-        lightNode:setAttenuationForRadius(256)
-
-        self.reference.sceneNode:update()
-        self.reference.sceneNode:updateEffects()
-
-        self.reference:getOrCreateAttachedDynamicLight(lightNode, 1.0)
-
-        self.refData.lanternOn = true
-
-        if e.playSound == true then
-            tes3.playSound{ reference = tes3.player, sound = "mer_tgw_alight", pitch = 1.0}
-        end
-    end
-end
-
-
-function Animal:turnLanternOff(e)
-    e = e or {}
-    if not self.reference.sceneNode then return end
-    local lanternParent = self.reference.sceneNode:getObjectByName("LANTERN")
-    self.removeLight(lanternParent)
-    local lightParent = self.reference.sceneNode:getObjectByName("LIGHT")
-    lightParent.translation.z = 1000
-    local lightNode = self.reference.sceneNode:getObjectByName("LanternLight")
-    if lightNode then
-        lightNode:setAttenuationForRadius(0)
-        self.reference.sceneNode:update()
-        self.reference.sceneNode:updateEffects()
-        self.refData.lanternOn = false
-        if e.playSound == true then
-            tes3.playSound{ reference = tes3.player, sound = "mer_tgw_alight", pitch = 1.0}
-        end
-    end
-end
 
 function Animal:setSwitch()
     if not self.reference.sceneNode then return end
@@ -1950,7 +1406,7 @@ function Animal:setSwitch()
 
         if node then
             node.switchIndex = self.pack:hasPackItem(packItem) and 1 or 0
-            if self.refData.hasPack and common.getConfig().displayAllGear and packItem.dispAll then
+            if self.pack:hasPack() and common.getConfig().displayAllGear and packItem.dispAll then
                 node.switchIndex =  1
             end
 
@@ -1982,8 +1438,8 @@ function Animal:setSwitch()
 
                         if sameLantern ~= true then
                             common.log:debug("Changing lantern")
-                            self:detachLantern()
-                            self:attachLantern(itemHeld)
+                            self.lantern:detachLantern()
+                            self.lantern:attachLantern(itemHeld)
 
                             --set up light properties
                             local lightNode = onNode:getObjectByName("LanternLight") or niPointLight.new()
@@ -1996,17 +1452,17 @@ function Animal:setSwitch()
                             )--[[@as niColor]]
                             lightParent:attachChild(lightNode, true)
                             --Attach the light
-                            if self.refData.lanternOn then
-                                self:turnLanternOn()
+                            if self.lantern:isOn() then
+                                self.lantern:turnLanternOn()
                             else
-                                self:turnLanternOff()
+                                self.lantern:turnLanternOff()
                             end
                         end
                     else
                         --detach item and light
                         if onNode:getObjectByName("LanternLight") then
-                            self:detachLantern()
-                            self:turnLanternOff()
+                            self.lantern:detachLantern()
+                            self.lantern:turnLanternOff()
                         end
                     end
                 end

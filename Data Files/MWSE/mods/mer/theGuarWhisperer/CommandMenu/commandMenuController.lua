@@ -33,6 +33,7 @@ end
 
 
 --Check if looking at a part of the backpack and grab it straight from there
+---@param animal GuarWhisperer.Animal
 local function grabFromPack(animal)
     common.log:debug("Calling ray test")
     local eyePos =  tes3.getPlayerEyePosition()
@@ -69,16 +70,14 @@ local function grabFromPack(animal)
                         end
 
                         if hitNode then
-
                             if data.grabNode == "LANTERN" then
-                                if animal.refData.lanternOn then
-                                    animal:turnLanternOff{ playSound = true }
+                                if animal.lantern:isOn() then
+                                    animal.lantern:turnLanternOff{ playSound = true }
                                 else
-                                    animal:turnLanternOn{ playSound = true }
+                                    animal.lantern:turnLanternOn{ playSound = true }
                                 end
                                 return true
                             end
-
                             common.log:debug("Grabbing %s from pack", data.grabNode)
                             for _, itemId in ipairs(data.items) do
                                 local inventory = animal.reference.object.inventory

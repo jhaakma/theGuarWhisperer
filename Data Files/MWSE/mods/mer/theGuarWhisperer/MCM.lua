@@ -18,11 +18,11 @@ local function registerMcm()
             "you recieve a notification that your guar trusts you enough to follow you. \n\n" ..
 
             "The only way to gain your guar's trust is to spend time with it and keep it happy. Play fetch, give it pets, " ..
-            "and keep it well fed, and its trust will increase in no time. " .. 
+            "and keep it well fed, and its trust will increase in no time. " ..
             "The more your guar trusts you, the more commands will become available. Eventually your guar will be able to fetch, harvest or " ..
             "steal items for you, equip a pack (also available at traders) to unlock companion share, and eventually breed with other guars " ..
             "and make baby guars. \n\n" ..
-            
+
             "If your guar gets lost, you can purchase a guar flute that, when played, will summon your guar back to you." ..
             "Flutes, packs, and toys can be purchased from Arrille, Ra'virr, as well as various other outfitters and traders. \n\n" ..
 
@@ -33,7 +33,7 @@ local function registerMcm()
         }
 
         --SETTINGS
-    
+
         local settingsCategory = settingsPage:createCategory("Settings")
 
         settingsCategory:createYesNoButton{
@@ -69,7 +69,7 @@ local function registerMcm()
 
         local debugCategory = settingsPage:createCategory("Debug Options")
 
-        debugCategory:createDropDown{
+        debugCategory:createDropdown{
             label = "Log Level",
             description = "Set the logging level for mwse.log. Keep on INFO unless you are debugging.",
             options = {
@@ -133,9 +133,9 @@ local function registerMcm()
         }
         for _, credit in ipairs(credits) do
             local block = creditsCategory:createSideBySideBlock()
-            block:createHyperLink{
+            block:createHyperlink{
                 text = credit.name,
-                exec = "start" .. credit.link,
+                url = credit.link,
                 postCreate = (
                     function(self)
                         self.elements.outerContainer.autoWidth = true
@@ -175,6 +175,7 @@ local function registerMcm()
                     end
 
                     local merchants = {}
+                    ---@param obj tes3npc|tes3npcInstance
                     for obj in tes3.iterateObjects(tes3.objectType.npc) do
                         if not (obj.baseObject and obj.baseObject.id ~= obj.id ) then
                             if canSellGear(obj) then
@@ -200,10 +201,11 @@ local function registerMcm()
                 label = "Scripted Creatures",
                 callback = function()
                     local baseCreatures = {}
+                    ---@param obj tes3creature|tes3creatureInstance
                     for obj in tes3.iterateObjects(tes3.objectType.creature) do
                         if not (obj.baseObject and obj.baseObject.id ~= obj.id ) then
                             if obj.script then
-                                if animalConfig.meshes[obj.mesh:lower()] then
+                                if animalConfig.meshToConvertConfig[obj.mesh:lower()] then
                                     baseCreatures[#baseCreatures+1] = (obj.baseObject or obj).id:lower()
                                 end
                             end

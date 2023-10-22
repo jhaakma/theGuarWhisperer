@@ -1,7 +1,7 @@
 local Animal = require("mer.theGuarWhisperer.Animal")
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
 local common = require("mer.theGuarWhisperer.common")
-logger = common.log
+local logger = common.log
 
 ---@class GuarWhisperer.AnimalConverter.convert.params
 ---@field reference tes3reference
@@ -9,11 +9,69 @@ logger = common.log
 ---@class GuarWhisperer.AnimalConverter
 local AnimalConverter = {}
 
+---@param obj tes3creature
+---@return tes3creature
+local function createCreatureCopy(obj)
+    local newObj = obj:createCopy{}
+    local easyEscort = include("Easy Escort.interop")
+    if easyEscort then
+        logger:info("Adding %s to Easy Escort blacklist", newObj.id)
+        easyEscort.addToBlacklist(newObj.id)
+    end
+    return newObj
+end
+
+---Override the base object stats
+---@param baseObject tes3creature
+---@param convertConfig GuarWhisperer.ConvertConfig
+function AnimalConverter.overrideStats(baseObject, convertConfig)
+    local statOverrides = convertConfig.statOverrides
+    if not statOverrides then return end
+    logger:debug("Overriding stats")
+    if statOverrides.attributes then
+        logger:debug("Overriding attributes")
+        for attribute, value in pairs(statOverrides.attributes) do
+            logger:debug("Setting %s to %d", attribute, value)
+            baseObject.attributes[tes3.attribute[attribute] + 1] = value
+        end
+    end
+    if statOverrides.attackMin or statOverrides.attackMax then
+        for _, attack in ipairs(baseObject.attacks) do
+            if statOverrides.attackMin then
+                logger:debug("Setting attack min to %d", statOverrides.attackMin)
+                attack.min = statOverrides.attackMin
+            end
+            if statOverrides.attackMax then
+                logger:debug("Setting attack max to %d", statOverrides.attackMax)
+                attack.max = statOverrides.attackMax
+            end
+        end
+    end
+end
+
+
 ---@param reference tes3reference
----@param data GuarWhisperer.ConvertData
-function AnimalConverter.convert(reference, data)
+---@param convertConfig GuarWhisperer.ConvertConfig
+function AnimalConverter.convert(reference, convertConfig)
+    if reference.data.TGW_FLAGGED_FOR_DELETE then return end
+    logger:debug("Converting %s into type '%s'", reference.object.id, convertConfig.type)
+    local newObj = createCreatureCopy(reference.baseObject)
+    if convertConfig.mesh then
+        logger:debug("Replacing mesh with %s", convertConfig.mesh)
+        newObj.mesh = convertConfig.mesh
+    end
+    AnimalConverter.overrideStats(newObj, convertConfig)
+
+    local name = reference.data.tgw and reference.data.tgw.name
+        or convertConfig.name
+    if name then
+        logger:debug("Replacing name with %s", name)
+        newObj.name = name
+    end
+
+    reference.hasNoCollision = true
     local newRef = tes3.createReference{
-        object = animalConfig.guarMapper[data.extra.color],
+        object = newObj,
         position = reference.position,
         orientation =  {
             reference.orientation.x,
@@ -22,30 +80,34 @@ function AnimalConverter.convert(reference, data)
         },
         cell = reference.cell,
     }
+    if reference.data.tgw then
+        newRef.data.tgw = table.copy(reference.data.tgw)
+    end
+    reference.data.TGW_FLAGGED_FOR_DELETE = true
+    Animal.initialiseRefData(newRef, convertConfig.type)
     --Remove old ref
     reference:delete()
 
     local animal = Animal.get(newRef)
     if not animal then
+        logger:error("Failed to create animal from reference %s", newRef)
         return
     end
-    for key, val in pairs(data.extra) do
-        animal.refData[key] = val
+    table.copymissing(animal.refData, convertConfig.extra)
+    if animal.pack:hasPack() then
+       animal:setSwitch()
     end
-    if animal.refData.hasPack then
-        animal:setSwitch()
-    end
-    animal:randomiseGenes()
+    animal.genetics:randomiseGenes()
 
-    animal:setHome(animal.reference.position, animal.reference.cell)
-
+    logger:debug("Conversion done")
     return animal
 end
 
 ---Get the animal type and extra data for a given vanilla
 --- guar reference.
----@return GuarWhisperer.ConvertData?
-function AnimalConverter.getConvertData(reference)
+---@param reference tes3reference
+---@return GuarWhisperer.ConvertConfig?
+function AnimalConverter.getConvertConfig(reference)
     logger:trace("Get convert data")
     if not reference then
         logger:trace("No reference")
@@ -61,7 +123,7 @@ function AnimalConverter.getConvertData(reference)
     end
     local crMesh = reference.object.mesh:lower()
     logger:trace("Finding type for mesh %s", crMesh)
-    local typeData = animalConfig.meshes[crMesh]
+    local typeData = animalConfig.meshToConvertConfig[crMesh]
     if typeData then
         return typeData
     else
@@ -70,5 +132,10 @@ function AnimalConverter.getConvertData(reference)
     end
 end
 
+---@param convertConfig GuarWhisperer.ConvertConfig
+---@return GuarWhisperer.AnimalType
+function AnimalConverter.getTypeFromConfig(convertConfig)
+    return animalConfig.animals[convertConfig.type]
+end
 
 return AnimalConverter

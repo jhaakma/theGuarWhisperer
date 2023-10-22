@@ -31,7 +31,7 @@ return {
             if Animal.get(common.targetData.reference) then
                 return false
             end
-            if not common.activeCompanion:hasSkillReqs("attack") then
+            if not common.activeCompanion.needs:hasSkillReqs("attack") then
                 return false
             end
             if common.activeCompanion.refData.attackPolicy == "passive" then
@@ -58,7 +58,7 @@ return {
             return (
                 targetObj and
                 targetObj.objectType == tes3.objectType.npc and
-                common.activeCompanion:hasSkillReqs("charm")
+                common.activeCompanion.needs:hasSkillReqs("charm")
             )
         end
     },
@@ -78,7 +78,7 @@ return {
                 common.activeCompanion.refData.carriedItems == nil and
                 common.targetData.reference and
                 common.activeCompanion:canEat(common.targetData.reference) and
-                common.activeCompanion:hasSkillReqs("eat")
+                common.activeCompanion.needs:hasSkillReqs("eat")
             )
         end
     },
@@ -95,7 +95,7 @@ return {
             return (
                 common.activeCompanion:canHarvest(common.targetData.reference) and
                 tes3.hasOwnershipAccess{ target = common.targetData.reference } and
-                common.activeCompanion:hasSkillReqs("fetch")
+                common.activeCompanion.needs:hasSkillReqs("fetch")
             )
         end
     },
@@ -112,7 +112,7 @@ return {
             return (
                 common.activeCompanion:canFetch(common.targetData.reference) and
                 tes3.hasOwnershipAccess{ target = common.targetData.reference } and
-                common.activeCompanion:hasSkillReqs("fetch")
+                common.activeCompanion.needs:hasSkillReqs("fetch")
             )
         end
     },
@@ -147,7 +147,7 @@ return {
             return (
                 common.targetData.intersection ~= nil and
                 not common.targetData.reference and
-                common.activeCompanion:hasSkillReqs("follow")
+                common.activeCompanion.needs:hasSkillReqs("follow")
             )
         end
     },
@@ -167,7 +167,7 @@ return {
             common.log:debug("Ai state: %s", common.activeCompanion:getAI() )
             return (
                 common.activeCompanion:getAI() ~= "following" and
-                common.activeCompanion:hasSkillReqs("follow")-- and
+                common.activeCompanion.needs:hasSkillReqs("follow")-- and
                 -- ( not (
                 --     common.targetData and
                 --     common.targetData.reference and
@@ -236,7 +236,7 @@ return {
                 inMenu and
                 common.activeCompanion.reference.context and
                 common.activeCompanion.reference.context.companion == 1 and
-                common.activeCompanion.refData.hasPack == true
+                common.activeCompanion.pack:hasPack()
             )
         end
     },
@@ -263,7 +263,7 @@ return {
             common.activeCompanion.pack:unequipPack()
         end,
         requirements = function(inMenu)
-            return ( inMenu and common.activeCompanion.refData.hasPack == true )
+            return ( inMenu and common.activeCompanion.pack:hasPack() )
         end
     },
     {
@@ -273,13 +273,13 @@ return {
         end,
         description = "Turn on the equipped lantern.",
         command = function()
-            common.activeCompanion:turnLanternOn()
+            common.activeCompanion.lantern:turnLanternOn()
         end,
         requirements = function(inMenu)
             local animal = common.activeCompanion
-            return ( inMenu and animal.refData.hasPack == true and
+            return ( inMenu and animal.pack:hasPack() and
                 animal:getHeldItem(common.packItems.lantern) and
-                animal.refData.lanternOn ~= true )
+                (not animal.lantern:isOn()) )
         end
     },
     {
@@ -289,13 +289,13 @@ return {
         end,
         description = "Turn off the equipped lantern.",
         command = function()
-            common.activeCompanion:turnLanternOff()
+            common.activeCompanion.lantern:turnLanternOff()
         end,
         requirements = function(inMenu)
             local animal = common.activeCompanion
-            return ( inMenu and animal.refData.hasPack == true and
+            return ( inMenu and animal.pack:hasPack() and
                 animal:getHeldItem(common.packItems.lantern) and
-                animal.refData.lanternOn == true )
+                animal.lantern:isOn() )
         end
     },
 
@@ -352,11 +352,11 @@ return {
         end,
         description = "Breed with another guar to make a baby guar.",
         command = function()
-            common.activeCompanion:breed()
+            common.activeCompanion.genetics:breed()
         end,
         requirements = function(inMenu)
             return (inMenu and
-                common.activeCompanion:getCanConceive() )
+                common.activeCompanion.genetics:getCanConceive() )
         end
     },
     {
@@ -398,7 +398,7 @@ return {
         requirements = function(inMenu)
             return inMenu
                 and common.activeCompanion:getHome()
-                and common.activeCompanion:hasSkillReqs("follow")
+                and common.activeCompanion.needs:hasSkillReqs("follow")
         end
     },
     {
@@ -414,7 +414,7 @@ return {
             )
         end,
         requirements = function(inMenu)
-            return ( inMenu and common.activeCompanion:hasSkillReqs("follow") )
+            return ( inMenu and common.activeCompanion.needs:hasSkillReqs("follow") )
         end
     },
     {

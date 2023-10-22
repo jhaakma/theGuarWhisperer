@@ -10,7 +10,7 @@ version = "1.3.20"
 assets = [ "TheGuarWhisperer.esp", "Icons/mer_tgw", "Meshes/mer_tgw", "MWSE/mods/mer/theGuarWhisperer",]
 
 [dependencies.mwse]
-buildnumber = 3410
+buildnumber = 3423
 
 [dependencies.mge-xe]
 version = ">=0.15.0"

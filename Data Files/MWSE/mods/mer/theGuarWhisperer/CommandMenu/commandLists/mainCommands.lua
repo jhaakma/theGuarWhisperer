@@ -32,7 +32,7 @@ this.commands = {
         return (
             targetObj and
             targetObj.objectType == tes3.objectType.npc and
-            animal:hasSkillReqs("charm")
+            animal.needs:hasSkillReqs("charm")
         )
     end
 },
@@ -71,7 +71,7 @@ this.commands = {
         if Animal.get(e.targetData.reference) then
             return false
         end
-        if not animal:hasSkillReqs("attack") then
+        if not animal.needs:hasSkillReqs("attack") then
             return false
         end
         if animal.refData.attackPolicy == "passive" and not tes3.mobilePlayer.inCombat then
@@ -103,7 +103,7 @@ this.commands = {
             animal.refData.carriedItems == nil and
             e.targetData.reference and
             animal:canEat(e.targetData.reference) and
-            animal:hasSkillReqs("eat")
+            animal.needs:hasSkillReqs("eat")
         )
     end
 },
@@ -126,7 +126,7 @@ this.commands = {
         return (
             animal:canHarvest(e.targetData.reference) and
             tes3.hasOwnershipAccess{ target = e.targetData.reference } and
-            animal:hasSkillReqs("fetch")
+            animal.needs:hasSkillReqs("fetch")
         )
     end
 },
@@ -149,7 +149,7 @@ this.commands = {
         return (
             animal:canFetch(e.targetData.reference) and
             tes3.hasOwnershipAccess{ target = e.targetData.reference } and
-            animal:hasSkillReqs("fetch")
+            animal.needs:hasSkillReqs("fetch")
         )
     end
 },
@@ -246,7 +246,7 @@ this.commands = {
                 ( e.targetData.intersection == nil or
                 e.targetData.reference ) and
                 animal:getAI() ~= "following" and
-                animal:hasSkillReqs("follow")-- and
+                animal.needs:hasSkillReqs("follow")-- and
                 -- ( not (
                 --     e.targetData and
                 --     e.targetData.reference and
@@ -278,7 +278,7 @@ this.commands = {
             return (
                 e.targetData.intersection ~= nil and
                 not e.targetData.reference and
-                animal:hasSkillReqs("follow")
+                animal.needs:hasSkillReqs("follow")
             )
         end
     },
@@ -402,7 +402,7 @@ this.commands = {
         requirements = function(e)
             ---@type GuarWhisperer.Animal
             local animal = e.activeCompanion
-            return ( e.inMenu and animal.refData.hasPack == true )
+            return ( e.inMenu and animal.pack:hasPack() )
         end,
         delay = 0.1,
     },
@@ -460,13 +460,13 @@ this.commands = {
         command = function(e)
             ---@type GuarWhisperer.Animal
             local animal = e.activeCompanion
-            animal:breed()
+            animal.genetics:breed()
         end,
         requirements = function(e)
             ---@type GuarWhisperer.Animal
             local animal = e.activeCompanion
             return (e.inMenu and
-                animal:getCanConceive() )
+                animal.genetics:getCanConceive() )
         end,
         delay = 1.0,
     },
@@ -531,7 +531,7 @@ this.commands = {
             return (
                 e.inMenu and
                 animal:getHome() and
-                animal:hasSkillReqs("follow")
+                animal.needs:hasSkillReqs("follow")
             )
         end,
         delay = 0.1,
@@ -559,7 +559,7 @@ this.commands = {
             return (
                 e.inMenu and
                 animal:getHome() and
-                animal:hasSkillReqs("follow")
+                animal.needs:hasSkillReqs("follow")
             )
         end,
         delay = 0.1,
@@ -584,7 +584,7 @@ this.commands = {
         requirements = function(e)
             ---@type GuarWhisperer.Animal
             local animal = e.activeCompanion
-            return ( e.inMenu and animal:hasSkillReqs("follow") )
+            return ( e.inMenu and animal.needs:hasSkillReqs("follow") )
         end,
         delay = 0.1,
     },

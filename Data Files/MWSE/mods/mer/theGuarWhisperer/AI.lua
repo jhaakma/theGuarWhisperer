@@ -76,8 +76,8 @@ local ACTION_CONFIG = {
 local function onDeterminedAction(e)
     local animal = Animal.get(e.session.mobile.reference)
     if animal then
-        if animal.refData.lanternOn then
-            animal:turnLanternOff()
+        if animal.lantern:isOn() then
+            animal.lantern:turnLanternOff()
         end
 
         local action = ACTION_CONFIG[e.session.selectedAction]
@@ -166,10 +166,12 @@ event.register("loaded", function()
     }
 end)
 
--- local function onCombatEnd(e)
---     local animal = Animal.get(e.actor.reference)
---     if animal and animal.mobile then
 
---     end
--- end
--- event.register("combatStopped", onCombatEnd)
+---@param e attackHitEventData
+event.register("attackHit", function(e)
+    --progress level when guar attacks
+    local animal = Animal.get(e.mobile.reference)
+    if animal then
+        animal.stats:progressLevel(animal.animalType.lvl.attackProgress)
+    end
+end)

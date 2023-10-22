@@ -1,11 +1,17 @@
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.log
 
+---@class GuarWhisperer.Pack.Animal.refData
+---@field hasPack boolean has a backpack equipped
+
+---@class GuarWhisperer.Pack.Animal : GuarWhisperer.Animal
+---@field refData GuarWhisperer.Pack.Animal.refData
+
 ---@class GuarWhisperer.Pack
----@field animal GuarWhisperer.Animal
+---@field animal GuarWhisperer.Pack.Animal
 local Pack = {}
 
----@param animal GuarWhisperer.Animal
+---@param animal GuarWhisperer.Pack.Animal
 ---@return GuarWhisperer.Pack
 function Pack.new(animal)
     local self = setmetatable({}, { __index = Pack })
@@ -29,9 +35,6 @@ function Pack:hasPackItem(packItem)
     --iterate over items
     for _, item in ipairs(packItem.items) do
         if self.animal.reference.object.inventory:contains(item) then
-            if self.animal.refData.carriedItems and self.animal.refData.carriedItems[item] then
-                --Oh god we need to check the inventory count is higher than the carried Item count
-            end
             itemEquipped = true
         end
     end
@@ -86,8 +89,13 @@ end
 function Pack:canEquipPack()
     return self.animal.refData.hasPack ~= true
         and tes3.player.object.inventory:contains(common.packId)
-        and self.animal:hasSkillReqs("pack")
+        and self.animal.needs:hasSkillReqs("pack")
 end
+
+function Pack:hasPack()
+    return self.animal.refData.hasPack == true
+end
+
 
 
 

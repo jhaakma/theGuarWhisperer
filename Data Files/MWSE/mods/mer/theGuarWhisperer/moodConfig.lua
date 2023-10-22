@@ -1,34 +1,41 @@
+---@class GuarWhisperer.MoodConfig
 local this = {}
 
+---@class GuarWhisperer.Happiness.Status
+---@field id string @The id of the status
+---@field description string @The description of the status, displayed to the player
+---@field maxValue number @The maximum value of the status
+
+---@type GuarWhisperer.Happiness.Status[]
 this.happiness = {
     {
         id = "Miserable",
         description = "is completely miserable",
-        maxValue = 10,
+        maxValue = 20,
     },
 
     {
         id = "Depressed",
         description = "looks quite depressed",
-        maxValue = 20,
+        maxValue = 40,
     },
 
     {
         id = "Sad",
         description = "could use some affection",
-        maxValue = 40,
+        maxValue = 60,
     },
 
     {
         id = "Content",
         description = "looks content",
-        maxValue = 60,
+        maxValue = 80,
     },
 
     {
         id = "Happy",
         description = "looks happy",
-        maxValue = 80,
+        maxValue = 90,
     },
 
     {
@@ -38,7 +45,12 @@ this.happiness = {
     },
 }
 
+---@class GuarWhisperer.Affection.Status
+---@field id string @The id of the status
+---@field pettingResult fun(animal: GuarWhisperer.Animal): string @The result of petting the animal
+---@field maxValue number @The maximum value of the status
 
+---@type GuarWhisperer.Affection.Status[]
 this.affection = {
     {
         id = "Neglected",
@@ -86,7 +98,17 @@ this.affection = {
     },
 }
 this.defaultAffection = 20
+--- Multiplier applied to affection gain while waiting/resting
+this.affectionWaitMultiplier = 0.6
 
+---@class GuarWhisperer.Trust.Status
+---@field id string @The id of the status
+---@field description string @The description of the status, displayed to the player
+---@field skillDescription? string @The description of the skill increase, displayed to the player
+---@field minValue number @The minimum value of the status
+---@field maxValue number @The maximum value of the status
+
+---@type GuarWhisperer.Trust.Status[]
 this.trust = {
     {
         id = "Untrusting",
@@ -124,6 +146,9 @@ this.trust = {
     },
 }
 this.defaultTrust = 10
+---Multiplier applied to trust gain while waiting/resting
+this.trustWaitMultiplier = 0.2
+--- The skill requirements for each trust level.
 this.skillRequirements = {
     follow = this.trust[2].minValue,
     attack = this.trust[2].minValue,
@@ -134,7 +159,12 @@ this.skillRequirements = {
     breed = this.trust[5].minValue
 }
 
+---@class GuarWhisperer.Hunger.Status
+---@field minValue number @The minimum value of the status
+---@field maxValue number @The maximum value of the status
+---@field description string @The description of the status, displayed to the player
 
+---@type GuarWhisperer.Hunger.Status[]
 this.hunger = {
     {
         minValue = 0,
@@ -162,7 +192,6 @@ this.hunger = {
         description = "full"
     },
 }
-
 
 
 this.defaultHunger = 50

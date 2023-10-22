@@ -61,7 +61,7 @@ function CommandMenu:performAction()
         }
 
         if activeCommand.keepAlive ~= true then
-            common.log:debug("Action performed, destroying")
+            common.log:debug("Action performed, closing menu")
             self:destroy()
         else
             common.log:debug("Keep alive")

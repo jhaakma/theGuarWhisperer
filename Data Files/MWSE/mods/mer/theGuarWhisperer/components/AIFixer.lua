@@ -2,11 +2,16 @@
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.log
 
+---@class GuarWhisperer.AIFixer.Animal.refData
+
+---@class GuarWhisperer.AIFixer.Animal : GuarWhisperer.Animal
+---@field refData GuarWhisperer.AIFixer.Animal.refData
+
 ---@class GuarWhisperer.AIFixer
----@field animal GuarWhisperer.Animal
+---@field animal  GuarWhisperer.AIFixer.Animal
 local AIFixer = {}
 
----@param animal GuarWhisperer.Animal
+---@param animal  GuarWhisperer.AIFixer.Animal
 ---@return GuarWhisperer.AIFixer
 function AIFixer.new(animal)
     local self = setmetatable({}, { __index = AIFixer })
@@ -23,10 +28,10 @@ function AIFixer:resetFollow()
         if self.animal:distanceFrom(tes3.player) > 500 then
             local lastKnownPosition = self.animal.reference.position:copy()
             local lastKnownCell = self.animal.reference.cell
-            local lanternOn = self.animal.refData.lanternOn
+            local lanternOn = self.animal.lantern:isOn()
             if lanternOn then
                 -- Disable lantern so the player doesn't notice lighting changes
-                self.animal:turnLanternOff()
+                self.animal.lantern:turnLanternOff()
             end
             -- Make guar invisble while we sneakily move it to the player
             self.animal.reference.sceneNode.appCulled = true
@@ -49,7 +54,7 @@ function AIFixer:resetFollow()
                 -- make visible and turn lights back on
                 self.animal.reference.sceneNode.appCulled = false
                 if lanternOn then
-                    self.animal:turnLanternOn()
+                    self.animal.lantern:turnLanternOn()
                 end
             end)
         end
@@ -66,7 +71,6 @@ local function createContainer()
         mesh = [[EditorMarker.nif]],
         capacity = 10000
     }
-
     local ref = tes3.createReference {
         object = obj,
         position = tes3.player.position,
@@ -118,10 +122,10 @@ function AIFixer:fixSoundBug()
             end
             container:delete()
             --toggle lights to update scene effects etc
-            if self.animal.refData.lanternOn then
+            if self.animal.lantern:isOn() then
                 logger:debug("AI Fix - Toggling lantern")
-                self.animal:turnLanternOff()
-                self.animal:turnLanternOn()
+                self.animal.lantern:turnLanternOff()
+                self.animal.lantern:turnLanternOn()
             end
         end)
     end

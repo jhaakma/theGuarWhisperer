@@ -57,7 +57,10 @@ this.log = require("logging.logger").new{
 }
 this.merchantContainer = "mer_tgw_crate"
 this.packId = "mer_tgw_guarpack"
-this.ballId = "mer_tgw_ball"
+this.balls = {
+    mer_tgw_ball = true,
+    mer_tgw_ball_02 = true,
+}
 this.fluteId = "mer_tgw_flute"
 this.fluteSound = "mer_flutesound"
 
@@ -202,7 +205,7 @@ local function initialiseData()
 
     --in case you were stupid enough to save/load during a fadeout
     if fading then
-        tes3.fadeIn(0)
+        tes3.fadeIn()
     end
     event.trigger("GuarWhispererDataLoaded")
 end

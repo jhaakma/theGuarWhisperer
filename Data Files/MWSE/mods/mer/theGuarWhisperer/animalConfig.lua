@@ -1,3 +1,4 @@
+---@class GuarWhisperer.AnimalConfig
 local this = {}
 
 this.idles = {
@@ -26,7 +27,6 @@ this.idles = {
 ---@field petValue number
 
 ---@class GuarWhisperer.AnimalType.trust
----@field maxDistance number
 ---@field changePerHour number
 ---@field babyLevel number
 
@@ -60,7 +60,7 @@ this.animals = {
         hoursToMature = 24 * 4,
         lvl = {
             fetchProgress = 4,
-            attackProgress = 2
+            attackProgress = 1
         },
         hunger = {
             changePerHour = -1.0,
@@ -75,7 +75,6 @@ this.animals = {
             petValue = 60
         },
         trust = {
-            maxDistance = 1500,
             changePerHour = 5,
             babyLevel = 50,
         },
@@ -86,14 +85,14 @@ this.animals = {
         breedable = true,
         tameable = true,
         foodList = {
-            ["ingred_corkbulb_root_01"] = 50,
-            ["ingred_chokeweed_01"] = 40,
-            ["ingred_kresh_fiber_01"] = 40,
-            ["ingred_marshmerrow_01"] = 35,
-            ["ingred_saltrice_01"] = 35,
-            ["ingred_wickwheat_01"] = 35,
-            ["ingred_comberry_01"] = 25,
-            ["ingred_scathecraw_01"] = 40,
+            ["ingred_corkbulb_root_01"] = 70,
+            ["ingred_chokeweed_01"] = 60,
+            ["ingred_kresh_fiber_01"] = 60,
+            ["ingred_marshmerrow_01"] = 55,
+            ["ingred_saltrice_01"] = 55,
+            ["ingred_wickwheat_01"] = 55,
+            ["ingred_comberry_01"] = 45,
+            ["ingred_scathecraw_01"] = 60,
             --containers
             ["flora_corkbulb"] = true,
             ["flora_chokeweed_02"] = true,
@@ -116,6 +115,7 @@ this.animals = {
     },
 }
 
+---A list of meshes that can be greeted as a fellow guar
 this.greetableGuars = {
     ["mdfg\\fabricant_guar.nif"] = true,
     ["r\\guar.nif"] = true,
@@ -125,39 +125,69 @@ this.greetableGuars = {
     ["mer_tgw\\guar_tame_w.nif"] = true
 }
 
----@class GuarWhisperer.ConvertData.extra
+---@class GuarWhisperer.ConvertConfig.extra
 ---@field hasPack boolean
 ---@field canHavePack boolean
 ---@field color "standard" | "white"
 
----@class GuarWhisperer.ConvertData
----@field type GuarWhisperer.AnimalType
----@field extra GuarWhisperer.ConvertData.extra
+---@class GuarWhisperer.ConvertConfig.statOverrides
+---@field attributes? table<GuarWhisperer.Stats.AttributeName, number>
+---@field attackMin? number
+---@field attackMax? number
+
+---@class GuarWhisperer.ConvertConfig
+---@field name string? The default name of hte converted guar
+---@field mesh string? The mesh of the converted guar
+---@field type string
+---@field extra GuarWhisperer.ConvertConfig.extra
+---@field statOverrides GuarWhisperer.ConvertConfig.statOverrides?
 
 --Meshes to allow to turn into switch guar
----@type table<string, GuarWhisperer.ConvertData>
-this.meshes = {
-    ["r\\guar.nif"] = {
-        type = this.animals.guar,
+---@type table<string, GuarWhisperer.ConvertConfig>
+this.convertConfigs = {
+    guar = {
+        name = "Tame Guar",
+        mesh = "mer_tgw\\guar_tame.nif",
+        type = "guar",
         extra = {
             hasPack = false,
             canHavePack = true,
             color = "standard"
         },
+        statOverrides = {
+            attributes = {
+                strength = 50,
+                speed = 60,
+            },
+        }
     },
-    ["r\\guar_white.nif"] = {
-        type  = this.animals.guar,
+    whiteGuar = {
+        name = "Tame White Guar",
+        mesh = "mer_tgw\\guar_tame_w.nif",
+        type = "guar",
         extra = {
             hasPack = false,
             canHavePack = true,
             color = "white"
+        },
+        statOverrides = {
+            attributes = {
+                strength = 60,
+                speed = 60,
+            },
         }
     },
 }
 
-this.guarMapper = {
-    standard = "mer_tgw_guar",
-    white = "mer_tgw_guar_w",
+---@type table<string, GuarWhisperer.ConvertConfig>
+this.meshToConvertConfig = {
+    ["r\\guar.nif"] = this.convertConfigs.guar,
+    ["r\\guar_white.nif"] = this.convertConfigs.whiteGuar
+}
+
+this.legacyGuarToConvertConfig = {
+    mer_tgw_guar = this.convertConfigs.guar,
+    mer_tgw_guar_w = this.convertConfigs.whiteGuar
 }
 
 return this

@@ -1,4 +1,4 @@
-local Syntax = require("mer.theGuarWhisperer.services.Syntax")
+local Syntax = require("mer.theGuarWhisperer.components.Syntax")
 local common = require("mer.theGuarWhisperer.common")
 
 local UI = {}
@@ -38,7 +38,7 @@ local function getSubtitleText(animal)
     return string.format("Level %d %s %s",
         animal.stats:getLevel(),
         animal.refData.gender,
-        animal.refData.isBaby and "(baby)" or ""
+        animal.genetics:isBaby() and "(baby)" or ""
     )
 end
 
@@ -46,9 +46,9 @@ end
 local function getDescriptionText(animal)
     return string.format("%s %s. %s %s.",
         animal:getName(),
-        animal:getMood("happiness").description,
+        animal.needs:getHappinessStatus().description,
         animal.syntax:getHeShe(),
-        animal:getMood("trust").description
+        animal.needs:getTrustStatus().description
     )
 end
 

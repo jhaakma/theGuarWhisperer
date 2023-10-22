@@ -1,15 +1,15 @@
 local Animal = require("mer.theGuarWhisperer.Animal")
 local common = require("mer.theGuarWhisperer.common")
 
-local function onEquipWhistle(e)
+local function onEquipFlute(e)
     if not common.getModEnabled() then
-        common.log:trace("activateWhistle(): Mod disabled")
+        common.log:trace("activateFlute(): Mod disabled")
         return
     end
     if not ( e.item.id == common.fluteId ) then
-        common.log:trace("activateWhistle(): Activated item not a whistle: %s", e.item.id)
+        common.log:trace("activateFlute(): Activated item not a flute: %s", e.item.id)
     else
-        common.log:trace("activateWhistle(): Found a whistle. Leaving menu mode: %s", e.item.id)
+        common.log:trace("activateFlute(): Found a flute. Leaving menu mode: %s", e.item.id)
         tes3ui.leaveMenuMode()
         timer.delayOneFrame(function()
             local buttons = {}
@@ -17,7 +17,7 @@ local function onEquipWhistle(e)
                 common.iterateRefType("companion", function(ref)
                     local animal = Animal.get(ref)
                     if animal and animal:canBeSummoned() then
-                        common.log:trace("activateWhistle(): %s can be summoned, adding to list", animal:getName())
+                        common.log:trace("activateFlute(): %s can be summoned, adding to list", animal:getName())
                         table.insert(buttons, {
                             text = animal:getName(),
                             callback = function()
@@ -38,18 +38,18 @@ local function onEquipWhistle(e)
                     end
                 end)
             else
-                common.log:trace("In interior, whistle won't work")
+                common.log:trace("In interior, flute won't work")
             end
 
             if #buttons > 0 then
-                common.log:trace("activateWhistle(): Found at least one companion, calling messageBox")
+                common.log:trace("activateFlute(): Found at least one companion, calling messageBox")
                 table.insert(buttons, { text = "Cancel"})
                 common.messageBox{
                     message = "Which guar do you want to call?",
                     buttons = buttons
                 }
             else
-                common.log:trace("activateWhistle(): No companions found, playing whistle sound")
+                common.log:trace("activateFlute(): No companions found, playing flute sound")
                 tes3.playSound{ reference = tes3.player, sound = common.fluteSound, }
             end
         end)
@@ -57,4 +57,4 @@ local function onEquipWhistle(e)
 end
 
 
-event.register("equip", onEquipWhistle)
+event.register("equip", onEquipFlute)
