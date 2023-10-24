@@ -84,7 +84,7 @@ function AnimalConverter.convert(reference, convertConfig)
         return
     end
     if animal.pack:hasPack() then
-       animal:setSwitch()
+       animal.pack:setSwitch()
     end
     animal.genetics:randomiseGenes()
 

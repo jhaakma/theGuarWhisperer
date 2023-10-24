@@ -75,7 +75,7 @@ return {
         requirements = function()
             return (
                 common.activeCompanion and
-                common.activeCompanion.refData.carriedItems == nil and
+                (not common.activeCompanion:hasCarriedItems()) and
                 common.targetData.reference and
                 common.activeCompanion:canEat(common.targetData.reference) and
                 common.activeCompanion.needs:hasSkillReqs("eat")
@@ -126,7 +126,7 @@ return {
             common.activeCompanion:moveToAction(common.targetData.reference, "fetch")
         end,
         requirements = function()
-            return (not common.activeCompanion:hasItems())
+            return (not common.activeCompanion:hasCarriedItems())
                 and common.activeCompanion:canFetch(common.targetData.reference)
                 and not tes3.hasOwnershipAccess{ target = common.targetData.reference }
         end,
@@ -278,7 +278,7 @@ return {
         requirements = function(inMenu)
             local animal = common.activeCompanion
             return ( inMenu and animal.pack:hasPack() and
-                animal:getHeldItem(common.packItems.lantern) and
+                animal.lantern:getLanternFromInventory() and
                 (not animal.lantern:isOn()) )
         end
     },
@@ -294,7 +294,7 @@ return {
         requirements = function(inMenu)
             local animal = common.activeCompanion
             return ( inMenu and animal.pack:hasPack() and
-                animal:getHeldItem(common.packItems.lantern) and
+                animal.lantern:getLanternFromInventory() and
                 animal.lantern:isOn() )
         end
     },

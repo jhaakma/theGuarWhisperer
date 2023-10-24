@@ -168,7 +168,7 @@ end
 local function guarTimer()
     if not common.getModEnabled() then return end
     Animal.referenceManager:iterateReferences(function(_, animal)
-        animal:setSwitch()
+        animal.pack:setSwitch()
         if animal:isActive() then
             animal.genetics:updateGrowth()
             animal:updateAI()

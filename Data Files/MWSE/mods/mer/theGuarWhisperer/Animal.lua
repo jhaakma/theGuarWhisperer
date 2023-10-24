@@ -248,12 +248,12 @@ end
 function Animal:intialiseOnActivated()
     if not self:isDead() then
         self:playAnimation("idle")
-        if self.refData.carriedItems then
-            for _, item in pairs(self.refData.carriedItems) do
+        if self:hasCarriedItems() then
+            for _, item in pairs(self:getCarriedItems()) do
                 self:putItemInMouth(tes3.getObject(item.id))
             end
         end
-        self:setSwitch()
+        self.pack:setSwitch()
         self:updateAI()
         logger:info("intialised %s on activated", self:getName())
     end
@@ -748,9 +748,18 @@ function Animal:canFetch(reference)
 end
 
 
+---@return boolean
+function Animal:hasCarriedItems()
+    return table.size(self:getCarriedItems()) > 0
+end
+
+
+function Animal:getCarriedItems()
+    return self.refData.carriedItems or {}
+end
 
 function Animal:addToCarriedItems(name, id, count)
-    self.refData.carriedItems = self.refData.carriedItems or {}
+    self.refData.carriedItems = self:getCarriedItems()
     if not self.refData.carriedItems[id] then
         self.refData.carriedItems[id] = {
             name = name,
@@ -765,7 +774,7 @@ end
 function Animal:removeItemsFromMouth()
     local node = self.reference.sceneNode:getObjectByName("ATTACH_MOUTH")
 
-    for _, item in pairs(self.refData.carriedItems) do
+    for _, item in pairs(self:getCarriedItems()) do
         local pickedItem = node:getObjectByName("Picked_Up_Item")
         while pickedItem do
             node:detachChild(node:getObjectByName("Picked_Up_Item"))
@@ -926,11 +935,11 @@ function Animal:eatFromWorld(target)
     if target.object.objectType == tes3.objectType.container then
 
         self:harvestItem(target)
-        if not self.refData.carriedItems then
+        if not self:hasCarriedItems() then
             tes3.messageBox("%s wasn't unable to get any nutrition from the %s", self:getName(), target.object.name)
             return
         end
-        for _, item in pairs(self.refData.carriedItems) do
+        for _, item in pairs(self:getCarriedItems()) do
             tes3.removeItem{
                 reference = self.reference,
                 item = item.id,
@@ -940,8 +949,6 @@ function Animal:eatFromWorld(target)
             local foodAmount = self.animalType.foodList[string.lower(item.id)]
             self:processFood(foodAmount)
         end
-
-
         tes3.playSound{ reference = self.reference, sound = "Item Ingredient Up" }
         tes3.messageBox("%s eats the %s", self:getName(), target.object.name)
     elseif target.object.objectType == tes3.objectType.ingredient then
@@ -1016,10 +1023,7 @@ end
 
 
 function Animal:handOverItems()
-    local carriedItems = self.refData.carriedItems
-    if not carriedItems then return end
-
-
+    local carriedItems = self:getCarriedItems()
     for _, item in pairs(carriedItems) do
         local count = item.count
         tes3.transferItem{
@@ -1136,12 +1140,6 @@ function Animal:getIsStuck()
     end
 end
 
----@return boolean
-function Animal:hasItems()
-    return self.refData.carriedItems ~= nil
-        and table.size(self.refData.carriedItems) > 0
-end
-
 function Animal:updateCloseDistance()
     if self:getAI() == "following" and tes3.player.cell.isInterior ~= true then
         local distance = self:distanceFrom(tes3.player)
@@ -1150,7 +1148,7 @@ function Animal:updateCloseDistance()
 
         if distance > teleportDist and not self.reference.mobile.inCombat then
             --dont' teleport if fetching (unless stuck)
-            if not self:hasItems() then
+            if not self:hasCarriedItems() then
                 self:closeTheDistanceTeleport()
             end
         end
@@ -1359,7 +1357,7 @@ function Animal:getRefusalMessage()
     local messages = {
         "<name> doesn't want to do that.",
         "<name> refuses to listen to you.",
-        "Your commands fall on deaf ears.",
+        "Your command falls on deaf ears.",
         "<name> ignores you.",
     }
     local message = table.choice(messages)
@@ -1452,86 +1450,11 @@ end
 --------------------------------------------
 
 
-function Animal:getHeldItem(packItem)
-    for _, item in ipairs(packItem.items) do
+---@param itemList table<string, boolean>
+function Animal:getItemFromInventory(itemList)
+    for item in pairs(itemList) do
         if self.reference.object.inventory:contains(item) then
             return tes3.getObject(item)
-        end
-    end
-end
-
-
-function Animal:setSwitch()
-    if not self.reference.sceneNode then return end
-    if not self.reference.mobile then return end
-    local animState = self.reference.mobile.actionData.animationAttackState
-
-    --don't update nodes during dying animation
-    --if health <= 0 and animState ~= tes3.animationState.dead then return end
-    if animState == tes3.animationState.dying then return end
-
-    for _, packItem in pairs(common.packItems) do
-        local node = self.reference.sceneNode:getObjectByName(packItem.id)
-
-        if node then
-            node.switchIndex = self.pack:hasPackItem(packItem) and 1 or 0
-            if self.pack:hasPack() and common.getConfig().displayAllGear and packItem.dispAll then
-                node.switchIndex =  1
-            end
-
-            --switch has changed, add or remove item meshes
-            if packItem.attach then
-                if packItem.light then
-                    --attach item
-                    local onNode = node.children[2]
-                    local lightParent = onNode:getObjectByName("LIGHT")
-                    local lanternParent = self.reference.sceneNode:getObjectByName("LANTERN")
-
-                    if node.switchIndex == 1 then
-                        local itemHeld = self:getHeldItem(packItem)
-
-                         --Add actual light
-
-                        --Check if its a different light, remove old one
-                        local sameLantern
-                        if lanternParent.children and lanternParent.children[1] ~= nil then
-                            local currentLanternId = lanternParent.children[1].name
-                            if itemHeld.id == currentLanternId then
-                                sameLantern = true
-                            end
-                        end
-
-                        if sameLantern ~= true then
-                            common.log:debug("Changing lantern")
-                            self.lantern:detachLantern()
-                            self.lantern:attachLantern(itemHeld)
-
-                            --set up light properties
-                            local lightNode = onNode:getObjectByName("LanternLight") or niPointLight.new()
-                            lightNode.name = "LanternLight"
-                            lightNode.ambient = tes3vector3.new(0,0,0) --[[@as niColor]]
-                            lightNode.diffuse = tes3vector3.new(
-                                itemHeld.color[1] / 255,
-                                itemHeld.color[2] / 255,
-                                itemHeld.color[3] / 255
-                            )--[[@as niColor]]
-                            lightParent:attachChild(lightNode, true)
-                            --Attach the light
-                            if self.lantern:isOn() then
-                                self.lantern:turnLanternOn()
-                            else
-                                self.lantern:turnLanternOff()
-                            end
-                        end
-                    else
-                        --detach item and light
-                        if onNode:getObjectByName("LanternLight") then
-                            self.lantern:detachLantern()
-                            self.lantern:turnLanternOff()
-                        end
-                    end
-                end
-            end
         end
     end
 end
@@ -1562,7 +1485,7 @@ function Animal:activate()
         return false
     --Otherwise trigger custom activation
     else
-        if self.refData.carriedItems ~= nil then
+        if self:hasCarriedItems() then
             self.refData.commandActive = false
             self:handOverItems()
             self:restorePreviousAI()

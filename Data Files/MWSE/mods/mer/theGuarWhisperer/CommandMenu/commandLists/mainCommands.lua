@@ -101,7 +101,7 @@ this.commands = {
         ---@type GuarWhisperer.Animal
         local animal = e.activeCompanion
         return animal
-            and animal.refData.carriedItems == nil
+            and (not animal:hasCarriedItems())
             and e.targetData.reference ~= nil
             and animal:canEat(e.targetData.reference)
             and animal.needs:hasSkillReqs("eat")
@@ -165,7 +165,7 @@ this.commands = {
     requirements = function(e)
         ---@type GuarWhisperer.Animal
         local animal = e.activeCompanion
-        return (not animal:hasItems())
+        return (not animal:hasCarriedItems())
             and animal:canFetch(e.targetData.reference)
             and (not tes3.hasOwnershipAccess{ target = e.targetData.reference })
     end,

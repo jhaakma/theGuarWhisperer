@@ -32,99 +32,6 @@ local function hasModifierPressed()
 end
 
 
---Check if looking at a part of the backpack and grab it straight from there
----@param animal GuarWhisperer.Animal
-local function grabFromPack(animal)
-    common.log:debug("Calling ray test")
-    local eyePos =  tes3.getPlayerEyePosition()
-    local results = tes3.rayTest{
-        position = eyePos,
-        direction = tes3.getPlayerEyeVector(),
-        ignore = { tes3.player },
-        findAll = true
-    }
-
-    if results then
-        for _, result in ipairs(results) do
-            if result and result.object then
-                common.log:debug("Ray hit %s", result.object.name)
-                for _, data in pairs(common.packItems) do
-                    if data.grabNode then
-
-                        local hitNode
-                        local node = result.object
-                        while node.parent do
-                            if node.name == data.grabNode then
-                                hitNode = true
-                                break
-                            end
-                            node = node.parent
-                        end
-                        if hitNode then
-                            local distanceToIntersection = result.intersection:distance(eyePos)
-                            local distanceToGuar = animal.reference.position:distance(eyePos)
-                            if distanceToIntersection > distanceToGuar then
-                                --too far away
-                                hitNode = false
-                            end
-                        end
-
-                        if hitNode then
-                            if data.grabNode == "LANTERN" then
-                                if animal.lantern:isOn() then
-                                    animal.lantern:turnLanternOff{ playSound = true }
-                                else
-                                    animal.lantern:turnLanternOn{ playSound = true }
-                                end
-                                return true
-                            end
-                            common.log:debug("Grabbing %s from pack", data.grabNode)
-                            for _, itemId in ipairs(data.items) do
-                                local inventory = animal.reference.object.inventory
-                                if inventory:contains(itemId) then
-                                    common.log:debug("Found %s in inventory", itemId)
-                                    for _, stack in pairs(inventory) do
-                                        if stack.object.id:lower() == itemId:lower() then
-                                            local count = stack.count
-                                            local itemData
-                                            if stack.variables and #stack.variables > 0 then
-                                                count = 1
-                                                itemData = stack.variables[1]
-                                            end
-                                            common.log:debug("Item transferred successfully")
-                                            tes3.messageBox("Retrieved %s from pack.", stack.object.name)
-                                            tes3.transferItem{
-                                                from = animal.reference,
-                                                to = tes3.player,
-                                                item = stack.object.id,
-                                                itemData = itemData,
-                                                count = count
-                                            }
-                                            event.trigger("Ashfall:triggerPackUpdate")
-                                            return true
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-                animal:setSwitch()
-            end
-        end
-    end
-
-    common.log:debug("Entering pack")
-    animal.refData.triggerDialog = true
-    tes3.player:activate(animal.reference)
-    return true
-
-
-    -- common.log:debug("nothing grabbed from pack")
-    -- return false
-end
-
-
 local function onKeyPress(e)
     if tes3.menuMode() then
         return
@@ -163,14 +70,11 @@ local function onMouseWheelChanged(e)
 end
 event.register("mouseWheel", onMouseWheelChanged)
 
-
 local function activateMenu(e)
     common.log:debug("activating menu")
-    local didGrabFromPack
     if hasModifierPressed() then
-        didGrabFromPack = grabFromPack(e.animal)
-    end
-    if not didGrabFromPack then
+        e.animal.pack:takeItemLookingAt()
+    else
         commandMenu:showCommandMenu(e.animal)
     end
 end

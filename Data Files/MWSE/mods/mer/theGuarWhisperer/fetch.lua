@@ -11,7 +11,7 @@ local function guarFollow(ball)
     ---@param animal GuarWhisperer.Animal
     Animal.referenceManager:iterateReferences(function(_, animal)
         local moving = animal:getAI() == "moving"
-        local mouthEmpty = (not animal:hasItems())
+        local mouthEmpty = (not animal:hasCarriedItems())
         local closeToBall = animal:distanceFrom(ball) < 1000
         local closeToPlayer = animal:distanceFrom(tes3.player) < 500
         if mouthEmpty and (closeToBall or closeToPlayer) and (not moving) then
