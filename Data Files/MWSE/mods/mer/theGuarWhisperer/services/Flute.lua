@@ -1,22 +1,28 @@
 local Animal = require("mer.theGuarWhisperer.Animal")
+local Controls = require("mer.theGuarWhisperer.services.Controls")
 local common = require("mer.theGuarWhisperer.common")
+local logger = common.createLogger("Flute")
 
 local function onEquipFlute(e)
     if not common.getModEnabled() then
-        common.log:trace("activateFlute(): Mod disabled")
+        logger:trace("Mod disabled")
         return
     end
     if not ( e.item.id == common.fluteId ) then
-        common.log:trace("activateFlute(): Activated item not a flute: %s", e.item.id)
+        logger:trace("Activated item not a flute: %s", e.item.id)
     else
-        common.log:trace("activateFlute(): Found a flute. Leaving menu mode: %s", e.item.id)
+        logger:debug("Found a flute. Leaving menu mode: %s", e.item.id)
         tes3ui.leaveMenuMode()
         timer.delayOneFrame(function()
             local buttons = {}
             if tes3.player.cell.isInterior ~= true then
-                Animal.referenceManager:iterateReferences(function(_, animal)
-                    if animal:canBeSummoned() then
-                        common.log:trace("activateFlute(): %s can be summoned, adding to list", animal:getName())
+                logger:debug("Finding companions to summon")
+                ---@param animal GuarWhisperer.Animal
+                for _, animal in ipairs(Animal.getAll()) do
+                    if not animal:canBeSummoned() then
+                        logger:debug("%s cannot be summoned", animal:getName())
+                    else
+                        logger:debug("%s can be summoned, adding to list", animal:getName())
                         table.insert(buttons, {
                             text = animal:getName(),
                             callback = function()
@@ -27,7 +33,7 @@ local function onEquipFlute(e)
                                         duration = 1,
                                         callback = function() animal:teleportToPlayer(400) end
                                     }
-                                    common.fadeTimeOut( 0, 2, function()
+                                    Controls.fadeTimeOut( 0, 2, function()
                                         animal:playAnimation("pet")
                                         animal:follow()
                                     end)
@@ -35,20 +41,19 @@ local function onEquipFlute(e)
                             end
                         })
                     end
-                end)
+                end
             else
-                common.log:trace("In interior, flute won't work")
+                logger:debug("In interior, flute won't work")
             end
-
             if #buttons > 0 then
-                common.log:trace("activateFlute(): Found at least one companion, calling messageBox")
+                logger:debug("Found at least one companion, calling messageBox")
                 table.insert(buttons, { text = "Cancel"})
-                common.messageBox{
+                tes3ui.showMessageMenu{
                     message = "Which guar do you want to call?",
                     buttons = buttons
                 }
             else
-                common.log:trace("activateFlute(): No companions found, playing flute sound")
+                logger:debug("No companions found, playing flute sound")
                 tes3.playSound{ reference = tes3.player, sound = common.fluteSound, }
             end
         end)

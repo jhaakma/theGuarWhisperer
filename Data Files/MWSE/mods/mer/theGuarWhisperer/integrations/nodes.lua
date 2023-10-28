@@ -1,9 +1,10 @@
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
+local logger = common.createLogger("Integrations - nodes")
 local Animal = require("mer.theGuarWhisperer.Animal")
 local Lantern = require("mer.theGuarWhisperer.components.Lantern")
-local NodeManager = require("mer.theGuarWhisperer.services.SceneNode.NodeManager")
-local SwitchNode = require("mer.theGuarWhisperer.services.SceneNode.SwitchNode")
+local NodeManager = require("CraftingFramework.nodeVisuals.NodeManager")
+local SwitchNode = require("CraftingFramework.nodeVisuals.SwitchNode")
+local AttachNode = require("CraftingFramework.nodeVisuals.InventoryAttachNode")
 local ashfall = include("mer.ashfall.interop")
 
 ---@param reference tes3reference
@@ -29,7 +30,6 @@ local function getTentIds()
     return tents
 end
 
-
 ---@return table<string, boolean>
 local function getAxeIds()
     if ashfall and ashfall.getBackPackWoodAxeIds then
@@ -53,7 +53,9 @@ local function getWoodIds()
     end
 end
 
-
+local function isActivePackAnimal (_, e)
+    return isPackAnimal(e.reference)
+end
 
 ---@param reference tes3reference
 ---@param item tes3item
@@ -75,7 +77,7 @@ local function itemValidNotCarrying(_, e)
     return not isCarryingItem(e.reference, e.item)
 end
 
----@type GuarWhisperer.NodeManager.SwitchNode.config[]
+---@type CraftingFramework.NodeManager.SwitchNode.config[]
 local switchConfigs = {
     {
         id = "SWITCH_PACK",
@@ -93,19 +95,18 @@ local switchConfigs = {
     },
 }
 
----@type GuarWhisperer.NodeManager.InventoryAttachNode.config[]
+---@type CraftingFramework.NodeManager.InventoryAttachNode.config[]
 local attachConfigs = {
     {
         id = "ATTACH_TENT",
         getItems = getTentIds,
-        isActive = function(_, e)
-            return isPackAnimal(e.reference)
-        end,
+        isActive = isActivePackAnimal,
         itemValid = itemValidNotCarrying
     },
     {
         id = "ATTACH_AXE",
         getItems = getAxeIds,
+        isActive = isActivePackAnimal,
         itemValid = itemValidNotCarrying,
         switchId = "SWITCH_AXE"
     },
@@ -113,12 +114,14 @@ local attachConfigs = {
         id = "ATTACH_WOOD",
         getItems = getWoodIds,
         itemValid = itemValidNotCarrying,
+        isActive = isActivePackAnimal,
         switchId = "SWITCH_WOOD"
     },
     {
         id = "ATTACH_LANTERN",
         getItems = Lantern.getLanternIds,
         itemValid = itemValidNotCarrying,
+        isActive = isActivePackAnimal,
         switchId = "SWITCH_LANTERN",
         afterAttach = function(_, e, item )
             ---@cast item tes3light
@@ -146,7 +149,7 @@ for _, nodeConfig in ipairs(switchConfigs) do
     logger:debug("Registered switch node %s", nodeConfig.id)
 end
 for _, nodeConfig in ipairs(attachConfigs) do
-    local attachNode = require("mer.theGuarWhisperer.services.SceneNode.InventoryAttachNode").new(nodeConfig)
+    local attachNode = AttachNode.new(nodeConfig)
     table.insert(nodes, attachNode)
 
     logger:debug("Registered attach node %s", nodeConfig.id)

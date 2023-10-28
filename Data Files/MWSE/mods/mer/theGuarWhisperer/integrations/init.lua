@@ -1,5 +1,5 @@
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
+local logger = common.createLogger("Integrations")
 
 local PATH = "Data Files/MWSE/mods/mer/theGuarWhisperer/integrations/"
 

@@ -1,5 +1,6 @@
 local Animal = require("mer.theGuarWhisperer.Animal")
 local common = require("mer.theGuarWhisperer.common")
+local logger = common.createLogger("mainCommands")
 local this = {}
 this.getTitle = function(e)
     ---@type GuarWhisperer.Animal
@@ -198,7 +199,7 @@ this.commands = {
         command = function(e)
             ---@type GuarWhisperer.Animal
             local animal = e.activeCompanion
-            animal:feed()
+            animal.hunger:feed()
         end,
         requirements = function(e)
             return e.inMenu
@@ -222,7 +223,7 @@ this.commands = {
         requirements = function(e)
             ---@type GuarWhisperer.Animal
             local animal = e.activeCompanion
-            common.log:debug("Ai state: %s", animal:getAI() )
+            logger:debug("Ai state: %s", animal:getAI() )
             return (e.targetData.intersection == nil or e.targetData.reference )
                 and animal:getAI() ~= "following"
                 and animal.needs:hasSkillReqs("follow")

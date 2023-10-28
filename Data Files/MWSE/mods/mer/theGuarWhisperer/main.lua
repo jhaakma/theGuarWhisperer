@@ -20,7 +20,7 @@ local commandMenu = require("mer.theGuarWhisperer.CommandMenu.CommandMenuModel")
 local ui = require("mer.theGuarWhisperer.ui")
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
+local logger = common.createLogger("main")
 require("mer.theGuarWhisperer.interop")
 
 
@@ -42,7 +42,7 @@ local function activateAnimal(e)
     else
         if e.target.object.script then
             local obj = e.target.baseObject or e.target.object
-            if common.getConfig().exclusions[obj.id:lower()] then
+            if common.config.mcm.exclusions[obj.id:lower()] then
                 logger:trace("Scripted but whitelisted")
             else
                 logger:trace("activateAnimal(): %s is blacklisted", e.target.object.id)
@@ -74,7 +74,7 @@ local function activateAnimal(e)
             else
                 logger:trace("activateAnimal(): Food (%s) found, triggering messageBox to tame guar", foodId)
                 local food = tes3.getObject(foodId)
-                common.messageBox{
+                tes3ui.showMessageMenu{
                     message = string.format("The %s sniffs around your pack. He seems to be eyeing up your %s.", e.target.object.name, food.name),
                     buttons = {
                         {
@@ -85,7 +85,7 @@ local function activateAnimal(e)
                                     logger:error("Failed to convert guar")
                                     return
                                 end
-                                newAnimal:eatFromInventory(food)
+                                newAnimal.hunger:eatFromInventory(food)
                                 timer.start{
                                     duration = 1.5,
                                     callback = function()
@@ -168,7 +168,7 @@ end
 local function guarTimer()
     if not common.getModEnabled() then return end
     Animal.referenceManager:iterateReferences(function(_, animal)
-        animal.pack:setSwitch()
+        --animal.pack:setSwitch()
         if animal:isActive() then
             animal.genetics:updateGrowth()
             animal:updateAI()
@@ -267,7 +267,7 @@ local function randomActTimer()
                 elseif animal:getAI() == "waiting" then
                     local rand = math.random(100)
                     logger:debug("rand: %s", rand)
-                    for _, data in ipairs(common.idleChances) do
+                    for _, data in ipairs(common.config.properties.WAITING_IDLE_CHANCES) do
                         if rand < data.maxChance then
                             logger:debug("playing random animation %s",data.group)
                             tes3.playAnimation{
@@ -313,6 +313,7 @@ local function startTimers()
     }
 end
 
+
 --Iterate over active animals
 local function onDataLoaded()
     commandMenu:destroy()
@@ -329,8 +330,6 @@ local function onObjectInvalidated(e)
     end
 end
 
-
-
 local function onDeath(e)
     local animal = Animal.get(e.reference)
     if animal then
@@ -345,7 +344,6 @@ local function onDeath(e)
         end
     end
 end
-
 
 --[[
     For guars from an old update, transfer them to new data table
@@ -382,9 +380,9 @@ end
 
 local function initialised()
     if tes3.isModActive("TheGuarWhisperer.ESP") then
-        require("mer.theGuarWhisperer.AI")
+        require("mer.theGuarWhisperer.services.AI")
         require("mer.theGuarWhisperer.fetch")
-        require("mer.theGuarWhisperer.merchantInventory")
+        require("mer.theGuarWhisperer.merchant")
         require("mer.theGuarWhisperer.CommandMenu.commandMenuController")
         require("mer.theGuarWhisperer.services.Flute")
         event.register("activate", activateAnimal)

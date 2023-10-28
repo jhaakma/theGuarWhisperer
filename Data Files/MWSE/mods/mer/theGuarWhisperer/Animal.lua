@@ -56,15 +56,17 @@
 ---@field genetics GuarWhisperer.Genetics
 ---@field lantern GuarWhisperer.Lantern
 ---@field needs GuarWhisperer.Needs
+---@field hunger GuarWhisperer.Hunger
 local Animal = {}
 
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
 local harvest = require("mer.theGuarWhisperer.harvest")
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
+local logger = common.createLogger("Animal")
 local ui = require("mer.theGuarWhisperer.ui")
 local ashfallInterop = include("mer.ashfall.interop")
 local CraftingFramework = require("CraftingFramework")
+local Controls = require("mer.theGuarWhisperer.services.Controls")
 local AIFixer = require("mer.theGuarWhisperer.components.AIFixer")
 local Syntax = require("mer.theGuarWhisperer.components.Syntax")
 local Pack = require("mer.theGuarWhisperer.components.Pack")
@@ -72,6 +74,7 @@ local Stats = require("mer.theGuarWhisperer.components.Stats")
 local Genetics = require("mer.theGuarWhisperer.components.Genetics")
 local Lantern = require("mer.theGuarWhisperer.components.Lantern")
 local Needs = require("mer.theGuarWhisperer.components.Needs")
+local Hunger = require("mer.theGuarWhisperer.components.Hunger")
 
 ---@type table<tes3.objectType, boolean>
 Animal.pickableObjects = {
@@ -176,6 +179,35 @@ function Animal.getAnimalType(reference)
      or animalConfig.animals.guar
 end
 
+function Animal.getAnimalObjects()
+    return common.config.persistentData.createdGuars
+end
+
+---Returns all animal references,
+--- even those not in active cells
+---@return GuarWhisperer.Animal[]
+function Animal.getAll()
+    local animals = {}
+    local objects = Animal.getAnimalObjects()
+    for objId in pairs(objects) do
+        local reference = tes3.getReference(objId)
+        if reference then
+            local animal = Animal.get(reference)
+            if animal then
+                table.insert(animals, animal)
+            end
+        end
+    end
+    return animals
+end
+
+
+function Animal.addToCreatedObjects(obj)
+    local createdObjects = Animal.getAnimalObjects()
+    createdObjects[obj.id:lower()] = true
+    logger:debug("Added %s to created objects", obj.id)
+end
+
 --- Construct a new Animal
 ---@param reference tes3reference
 ---@return GuarWhisperer.Animal|nil
@@ -186,7 +218,6 @@ function Animal:new(reference)
         logger:trace("No animal type")
         return
     end
-
     local newAnimal = {
         reference = reference,
         object = reference.object,
@@ -201,9 +232,11 @@ function Animal:new(reference)
     newAnimal.genetics = Genetics.new(newAnimal)
     newAnimal.lantern = Lantern.new(newAnimal)
     newAnimal.needs = Needs.new(newAnimal)
+    newAnimal.hunger = Hunger.new(newAnimal)
 
     setmetatable(newAnimal, self)
     self.__index = self
+    Animal.addToCreatedObjects(reference.baseObject)
     event.trigger("GuarWhisperer:registerReference", { reference = reference })
     return newAnimal
 end
@@ -672,7 +705,7 @@ function Animal:goHome(e)
                 self:wander()
             end)
         end
-        common.fadeTimeOut(hoursPassed, secondsTaken, function()
+        Controls.fadeTimeOut(hoursPassed, secondsTaken, function()
             tes3.positionCell{
                 reference = self.reference,
                 position = home.position,
@@ -793,68 +826,107 @@ function Animal:removeItemsFromMouth()
     end
 end
 
+---Gets an accurate bounding box by cloning and removing lights
+--- and collision before calling :createBoundingBox()
+---@param node niNode
+local function generateBoundingBox(node)
 
----@param object tes3object|tes3misc
----@param node? niNode
-function Animal:putItemInMouth(object, node)
-    --attach nif
-    -- local objNode = tes3.loadMesh(object.mesh):clone()
-    -- local itemNode = niNode.new()
-    -- itemNode:attachChild(objNode)
-    local itemNode = (node or tes3.loadMesh(object.mesh)):clone()
-    itemNode:clearTransforms()
-    itemNode.scale = itemNode.scale * ( 1 / self.reference.scale)
-    itemNode.name = "Picked_Up_Item"
-    local node = self.reference.sceneNode:getObjectByName("ATTACH_MOUTH")
-    --determine rotation
-    --Due to orientation of ponytail bone, item is already rotated 90 degrees
-    self.lantern.removeLight(itemNode)
+     -- prepare bounding box
+    --Light particles mess with bounding box calculation
+    local cloneForBB = node:clone()
+    Lantern.removeLight(cloneForBB)
     --remove collision
-    for node in table.traverse{itemNode} do
+    for node in table.traverse{cloneForBB} do
         if node:isInstanceOfType(tes3.niType.RootCollisionNode) then
             node.appCulled = true
         end
     end
+    cloneForBB:update()
+    return cloneForBB:createBoundingBox()
+end
+
+---@param object tes3object|tes3misc
+---@param node? niNode
+function Animal:putItemInMouth(object, node)
+    logger:info("Putting %s in %s's hunger", object.name, self:getName())
+    --Get item node and clear transforms
+    local itemNode = (node or tes3.loadMesh(object.mesh)):clone()
+    itemNode:clearTransforms()
+    itemNode.scale = itemNode.scale * ( 1 / self.reference.scale)
+    itemNode.name = "Picked_Up_Item"
     itemNode:update()
-    node:attachChild(itemNode, true)
 
-    local bb = itemNode:createBoundingBox()
+    local bb
+    if itemNode:getObjectByName("Bounding Box") then
+        bb = object.boundingBox
+    else
+        bb = generateBoundingBox(itemNode)
+    end
 
-    -- --Center position to middle of bounding box
-    -- do
-    --     local offsetX = (bb.max.x + bb.min.x) / 2
-    --     local offsetY = (bb.max.y + bb.min.y) / 2
-    --     local offsetZ = (bb.max.z + bb.min.z) / 2
-    --    -- itemNode.translation.x = itemNode.translation.x - offsetX
-    --    -- itemNode.translation.y = itemNode.translation.y - offsetY
-    --     itemNode.translation.z = itemNode.translation.z + offsetZ
-
-
-    -- end
-
-    do
+    local attachNode = self.reference.sceneNode:getObjectByName("ATTACH_MOUTH")
+    attachNode:attachChild(itemNode, true)
+    do --determine rotation
         --rotation
         local x = bb.max.x - bb.min.x
         local y = bb.max.y - bb.min.y
         local z = bb.max.z - bb.min.z
+        logger:debug("X: %s, Y: %s, Z: %s", x, y, z)
         local rotation
-        if x > y and x > z then --x is longest
+        ---@type string
+        local longestAxis = (
+            x > y and x > z and "x" or
+            y > x and y > z and "y" or
+            z > x and z > y and "z"
+        )
+
+        --[[
+            The Y axis goes from the left side to the right side of the hunger
+            The X axis goes from front to the back of the hunger
+
+            We want to rotate the item so that the longest side is along the Y axis
+        ]]
+        if longestAxis == "x" then
             logger:debug("X is longest, rotate z = 90")
             rotation = { z = math.rad(90) }
-        elseif y > x and y > z then --y is longest
+        elseif longestAxis == "y" then
             logger:debug("Y is longest, no rotation")
-            --no rotation
-        elseif z > x and z > y then --z is longest
+        elseif longestAxis == "z" then
             logger:debug("Z is longest, rotate x = 90")
             rotation = { x = math.rad(90) }
         end
-        --local rotation = Animal.pickableRotations[object.objectType]
         if rotation then
-            logger:debug("Rotating mouth item")
+            logger:debug("Rotating hunger item")
             local zRot90 = tes3matrix33.new()
             zRot90:fromEulerXYZ(rotation.x or 0, rotation.y or 0, rotation.z or 0)
             itemNode.rotation = itemNode.rotation * zRot90
         end
+
+        --Position at center of bounding box along longest axis
+        local yCenter = (bb.max[longestAxis] - bb.min[longestAxis]) / 2
+        local yOffset = bb.min[longestAxis] + yCenter
+
+        --Raise Z by min bb of new up
+        --The original axis that is now pointing UP
+        local newUpAxis = (
+            longestAxis == "x" and "z" or
+            longestAxis == "y" and "z" or
+            longestAxis == "z" and "y"
+        )
+        local zOffset = bb.min[newUpAxis]
+        ---For very thin items (paper etc), raise them up a bit
+        local zHeight = bb.max[newUpAxis] - bb.min[newUpAxis]
+        if zHeight < 1 then
+            logger:debug("zHeight < 1, raising zOffset")
+            zOffset = zOffset -2
+        end
+
+        local offset = tes3vector3.new(
+            0,
+            yOffset,
+            zOffset
+        )
+        logger:debug("Current Y: %s, yOffset: %s", itemNode.translation.y, yOffset)
+        itemNode.translation = itemNode.translation - offset
     end
     itemNode.appCulled = false
 end
@@ -906,30 +978,6 @@ function Animal:pickUpItem(reference)
 end
 
 
-function Animal:processFood(amount)
-    self.needs:modHunger(amount)
-
-    --Eating restores health as a % of base health
-    local healthCurrent = self.mobile.health.current
-    local healthMax = self.mobile.health.base
-    local difference = healthMax - healthCurrent
-    local healthFromFood = math.remap(
-        amount,
-        0, 100,
-        0, healthMax
-    )
-    healthFromFood = math.min(difference, healthFromFood)
-    tes3.modStatistic{
-        reference = self.reference,
-        name = "health",
-        current = healthFromFood
-    }
-
-    --Before guar is willing to follow, feeding increases trust
-    if not self.needs:hasSkillReqs("follow") then
-        self.needs:modTrust(3)
-    end
-end
 
 function Animal:eatFromWorld(target)
     if target.object.objectType == tes3.objectType.container then
@@ -947,7 +995,7 @@ function Animal:eatFromWorld(target)
                 playSound = false
             }
             local foodAmount = self.animalType.foodList[string.lower(item.id)]
-            self:processFood(foodAmount)
+            self.hunger:processFood(foodAmount)
         end
         tes3.playSound{ reference = self.reference, sound = "Item Ingredient Up" }
         tes3.messageBox("%s eats the %s", self:getName(), target.object.name)
@@ -955,7 +1003,7 @@ function Animal:eatFromWorld(target)
 
         self:pickUpItem(target)
         local foodAmount = self.animalType.foodList[string.lower(target.object.id)]
-        self:processFood(foodAmount)
+        self.hunger:processFood(foodAmount)
         tes3.removeItem{
             reference = self.reference,
             item = target.object,
@@ -977,34 +1025,7 @@ function Animal:eatFromWorld(target)
 end
 
 
-function Animal:eatFromInventory(item, itemData)
-    event.trigger("GuarWhisperer:EatFromInventory", { item = item, itemData = itemData })
-    --remove food from player
-    tes3.player.object.inventory:removeItem{
-        mobile = tes3.mobilePlayer,
-        item = item,
-        itemData = itemData or nil
-    }
-    tes3ui.forcePlayerInventoryUpdate()
 
-    self:processFood(self.animalType.foodList[string.lower(item.id)])
-
-    --visuals/sound
-    self:playAnimation("eat")
-    self:takeAction(2)
-    local itemId = item.id
-    timer.start{
-        duration = 1,
-        callback = function()
-            event.trigger("GuarWhisperer:AteFood", { reference = self.reference, itemId = itemId }  )
-            tes3.playSound{ reference = self.reference, sound = "Swallow" }
-            tes3.messageBox(
-                "%s gobbles up the %s.",
-                self:getName(), string.lower(item.name)
-            )
-        end
-    }
-end
 
 function Animal:harvestItem(target)
     local items = harvest.harvest(self.reference, target)
@@ -1143,7 +1164,7 @@ end
 function Animal:updateCloseDistance()
     if self:getAI() == "following" and tes3.player.cell.isInterior ~= true then
         local distance = self:distanceFrom(tes3.player)
-        local teleportDist = common.getConfig().teleportDistance
+        local teleportDist = common.config.mcm.teleportDistance
         --teleport if too far away
 
         if distance > teleportDist and not self.reference.mobile.inCombat then
@@ -1178,24 +1199,14 @@ function Animal:updateAI()
     end
 
     if exceededBrokenLimit then
-        if packageId == tes3.aiPackage.follow then
-            logger:debug("AI Fix: AI has been fixed")
-            self:moveToAction(tes3.player, "greet", true)
-            tes3.messageBox("%s looks like %s really missed you.", self:getName(), self.syntax:getHeShe(true))
-            self.refData.aiBroken = nil
-        else
-            logger:warn("AI Fix: still broken, using mwse.memory fix")
-            --Magic mwse.memory call to fix guars wandering off
-            ---@diagnostic disable: undefined-field
-            mwse.memory.writeByte({
-                address = mwse.memory.convertFrom.tes3mobileObject(self.reference.mobile) + 0xC0,
-                byte = 0x00,
-            })
-            timer.delayOneFrame(function()
-                ---@diagnostic enable: undefined-field
-                self:follow()
-            end)
-        end
+        logger:warn("AI Fix: still broken, using mwse.memory fix")
+        --Magic mwse.memory call to fix guars wandering off
+        ---@diagnostic disable: undefined-field
+        mwse.memory.writeByte({
+            address = mwse.memory.convertFrom.tes3mobileObject(self.reference.mobile) + 0xC0,
+            byte = 0x00,
+        })
+        self.refData.aiBroken = 0
     end
 
     --set correct ai package
@@ -1223,9 +1234,8 @@ function Animal:updateAI()
             logger:debug("Setting to wait after moving")
             self:wait()
         end
-    end
     --Check if stuck on something while wandering
-    if aiState == "wandering" then
+    elseif aiState == "wandering" then
         local isStuck = self:getIsStuck()
         if isStuck then
             logger:debug("Stuck, resetting wander")
@@ -1242,6 +1252,9 @@ function Animal:updateAI()
                 end
             }
         end
+    else
+        logger:warn("No AI state detected")
+        self:wait()
     end
 
     --[[
@@ -1380,31 +1393,7 @@ function Animal:attemptCommand(min, max)
     return true
 end
 
-function Animal:feed()
-    timer.delayOneFrame(function()
-        tes3ui.showInventorySelectMenu{
-            reference = tes3.player,
-            title = string.format("Feed %s", self:getName()),
-            noResultsText = string.format("You do not have any appropriate food."),
-            filter = function(e)
-                logger:trace("Filter: checking: %s", e.item.id)
 
-                for id, value in pairs(self.animalType.foodList) do
-                    logger:trace("%s: %s", id, value)
-                end
-                return (
-                    e.item.objectType == tes3.objectType.ingredient and
-                    self.animalType.foodList[string.lower(e.item.id)] ~= nil
-                )
-            end,
-            callback = function(e)
-                if e.item then
-                    self:eatFromInventory(e.item, e.itemData)
-                end
-            end
-        }
-    end)
-end
 
 function Animal:rename()
     local label = self.genetics:isBaby() and string.format("Name your new baby %s %s", self.genetics:getGender(), self.animalType.type) or
@@ -1443,21 +1432,6 @@ function Animal:rename()
     tes3ui.enterMenuMode(renameMenuId)
 end
 
-
-
-------------------------------------------
--- Switch node pack functions
---------------------------------------------
-
-
----@param itemList table<string, boolean>
-function Animal:getItemFromInventory(itemList)
-    for item in pairs(itemList) do
-        if self.reference.object.inventory:contains(item) then
-            return tes3.getObject(item)
-        end
-    end
-end
 
 
 function Animal:activate()

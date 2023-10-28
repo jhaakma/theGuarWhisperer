@@ -1,10 +1,9 @@
 --[[
     Handles events and player input for command menu
 ]]
-
 local common = require("mer.theGuarWhisperer.common")
+local logger = common.createLogger("CommandMenuController")
 local commandMenu = require("mer.theGuarWhisperer.CommandMenu.CommandMenuModel")
-
 
 --check if activate key is down
 local function didPressActivate()
@@ -14,20 +13,18 @@ end
 
 --Check if toggle key is down
 local function didPressToggleKey(e)
-    local config = common.getConfig()
-    return (
-        config.commandToggleKey and
-        e.keyCode == config.commandToggleKey.keyCode and
-        not not e.isShiftDown == not not config.commandToggleKey.isShiftDown and
-        not not e.isControlDown == not not config.commandToggleKey.isControlDown and
-        not not e.isAltDown == not not config.commandToggleKey.isAltDown
-    )
+    local toggleKey = common.config.mcm.commandToggleKey
+    return toggleKey
+        and e.keyCode == toggleKey.keyCode
+        and not not e.isShiftDown == not not toggleKey.isShiftDown
+        and not not e.isControlDown == not not toggleKey.isControlDown
+        and not not e.isAltDown == not not toggleKey.isAltDown
 end
 
 local function hasModifierPressed()
     local inputController = tes3.worldController.inputController
     local pressedModifier = inputController:isKeyDown(tes3.scanCode.lShift)
-    common.log:debug("Pressed modifier? %s", pressedModifier)
+    logger:debug("Pressed modifier? %s", pressedModifier)
     return pressedModifier
 end
 
@@ -71,7 +68,7 @@ end
 event.register("mouseWheel", onMouseWheelChanged)
 
 local function activateMenu(e)
-    common.log:debug("activating menu")
+    logger:debug("activating menu")
     if hasModifierPressed() then
         e.animal.pack:takeItemLookingAt()
     else

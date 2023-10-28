@@ -1,6 +1,6 @@
 
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
+local logger = common.createLogger("AIFixer")
 
 ---@class GuarWhisperer.AIFixer.Animal.refData
 

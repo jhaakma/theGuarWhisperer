@@ -1,10 +1,15 @@
 local common = require("mer.theGuarWhisperer.common")
+local logger = common.createLogger("MCM")
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
-local config = common.getConfig()
+local config = common.config
 local function registerMcm()
 
     local template = mwse.mcm.createTemplate{ name = "The Guar Whisperer"}
-    template:saveOnClose(common.configPath, config)
+    template.onClose = function()
+        config.save()
+        event.trigger("GuarWhisperer:McmUpdated")
+    end
+    template:saveOnClose(config.configPath, config)
     template:register()
 
     local settingsPage = template:createSideBarPage("Settings")
@@ -81,7 +86,7 @@ local function registerMcm()
             },
             variable = mwse.mcm.createTableVariable{ id = "logLevel", table = config },
             callback = function(self)
-                common.log:setLogLevel(self.variable.value)
+                logger:setLogLevel(self.variable.value)
             end
         }
 

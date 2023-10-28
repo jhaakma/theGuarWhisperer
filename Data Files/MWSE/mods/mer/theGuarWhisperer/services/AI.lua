@@ -5,7 +5,7 @@
 ]]
 local Animal = require("mer.theGuarWhisperer.Animal")
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
+local logger = common.createLogger("AI")
 
 local RUN_STATES = {
     --["following"] = true,
@@ -26,7 +26,7 @@ local function checkCellChanged(e)
         Animal.referenceManager:iterateReferences(function(_, animal)
             local doTeleport = animal:getAI() == "following"
                 and not animal:isDead()
-                and animal:distanceFrom(tes3.player) > common.getConfig().teleportDistance
+                and animal:distanceFrom(tes3.player) > common.config.mcm.teleportDistance
             if doTeleport then
                 logger:debug("Cell change teleport")
                 animal:teleportToPlayer(500)
@@ -66,7 +66,7 @@ local ACTION_CONFIG = {
 
 
 ---@param e determineActionEventData
-local function onDeterminedAction(e)
+event.register("determinedAction", function(e)
     local animal = Animal.get(e.session.mobile.reference)
     if animal then
         if animal.lantern:isOn() then
@@ -128,24 +128,30 @@ local function onDeterminedAction(e)
             end)
         end
     end
-end
-event.register("determinedAction", onDeterminedAction)
+end)
 
 
-local function onSpellCast(e)
+---@param e spellCastEventData
+event.register("spellCast", function(e)
     logger:trace("%s %s", e.source.name, e.caster.object.name )
-end
-event.register("spellCast", onSpellCast)
+end)
+
+event.register("menuExit", function()
+    ---@param animal GuarWhisperer.Animal
+    Animal.referenceManager:iterateReferences(function(_, animal)
+        animal.pack:setSwitch()
+    end)
+end)
 
 
-local function onEquip(e)
+---@param e equipEventData
+event.register("equip", function(e)
     local animal = Animal.get(e.reference)
     if animal then
         logger:debug("no guar, don't equip anything please")
         return false
     end
-end
-event.register("equip", onEquip)
+end)
 
 event.register("loaded", function()
     timer.start{
@@ -159,7 +165,6 @@ event.register("loaded", function()
         end
     }
 end)
-
 
 ---@param e attackHitEventData
 event.register("attackHit", function(e)

@@ -5,6 +5,7 @@
 local ui = require("mer.theGuarWhisperer.CommandMenu.commandMenuView")
 local Animal = require("mer.theGuarWhisperer.Animal")
 local common = require("mer.theGuarWhisperer.common")
+local logger = common.createLogger("CommandMenuModel")
 
 local CommandMenu = {}
 
@@ -61,10 +62,10 @@ function CommandMenu:performAction()
         }
 
         if activeCommand.keepAlive ~= true then
-            common.log:debug("Action performed, closing menu")
+            logger:debug("Action performed, closing menu")
             self:destroy()
         else
-            common.log:debug("Keep alive")
+            logger:debug("Keep alive")
         end
     end
 end
@@ -141,7 +142,7 @@ end
 function CommandMenu.checkCommandState()
     local self = CommandMenu
     if not self.targetData then
-        common.log:debug("No target Data")
+        logger:debug("No target Data")
         self.targetData = {}
     end
     if self.activeCompanion then
@@ -171,7 +172,7 @@ function CommandMenu.checkCommandState()
             ( newTargetData.reference ~= self.targetData.reference ) or
             ( self.targetData.playerTarget ~=  newTargetData.playerTarget )
         )
-        common.log:trace("Target Changed, updating command list")
+        logger:trace("Target Changed, updating command list")
         if targetChanged then
             self.targetData = newTargetData
             self:filterCommands()
@@ -181,7 +182,7 @@ function CommandMenu.checkCommandState()
         end
         self.targetData.intersection = newTargetData.intersection
     else
-        common.log:trace("No active Companion")
+        logger:trace("No active Companion")
     end
 end
 

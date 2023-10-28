@@ -1,6 +1,6 @@
 local moodConfig = require("mer.theGuarWhisperer.moodConfig")
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
+local logger = common.createLogger("Needs")
 
 ---@class GuarWhisperer.Needs.Animal.refData
 ---@field hunger number
@@ -238,7 +238,7 @@ end
 
 function Needs:updateNeeds()
     --get the time since last updated
-    local now = common.getHoursPassed()
+    local now = common.util.getHoursPassed()
     if not self.animal:isActive() then
         --not active, reset time
         self.animal.refData.lastUpdated = now

@@ -1,6 +1,6 @@
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
-local NodeManager = require("mer.theGuarWhisperer.services.SceneNode.NodeManager")
+local logger = common.createLogger("Pack")
+local NodeManager = require("CraftingFramework.nodeVisuals.NodeManager")
 
 ---@class GuarWhisperer.Pack.Animal.refData
 ---@field hasPack boolean has a backpack equipped
@@ -82,74 +82,9 @@ function Pack:hasPack()
 end
 
 function Pack:setSwitch()
-
     if not self.animal.reference.sceneNode then return end
     if not self.animal.reference.mobile then return end
-
     NodeManager.registeredNodeManagers["GuarWhisperer_PackNodes"]:processReference(self.animal.reference)
-
-
-    local animState = self.animal.reference.mobile.actionData.animationAttackState
-
-    --don't update nodes during dying animation
-    --if health <= 0 and animState ~= tes3.animationState.dead then return end
-    if animState == tes3.animationState.dying then return end
-
-    -- for _, packItem in pairs(common.packItems) do
-    --     local node = self.animal.reference.sceneNode:getObjectByName(packItem.id)
-
-    --     if node then
-    --         node.switchIndex = self:hasPackItem(packItem) and 1 or 0
-    --         if self:hasPack() and common.getConfig().displayAllGear and packItem.dispAll then
-    --             node.switchIndex =  1
-    --         end
-
-    --         --switch has changed, add or remove item meshes
-    --         if packItem.attach then
-    --             if packItem.light then
-    --                 --attach item
-    --                 local onNode = node.children[2]
-    --                 local lightParent = onNode:getObjectByName("ATTACH_LIGHT")
-    --                 local lanternParent = self.animal.reference.sceneNode:getObjectByName("LANTERN")
-
-    --                 if node.switchIndex == 1 then
-    --                     local itemHeld = self.animal:getItemFromInventory(packItem)
-
-    --                      --Add actual light
-
-    --                     --Check if its a different light, remove old one
-    --                     local sameLantern
-    --                     if lanternParent.children and lanternParent.children[1] ~= nil then
-    --                         local currentLanternId = lanternParent.children[1].name
-    --                         if itemHeld.id == currentLanternId then
-    --                             sameLantern = true
-    --                         end
-    --                     end
-
-    --                     if sameLantern ~= true then
-    --                         logger:debug("Changing lantern")
-    --                         self.animal.lantern:detachLantern()
-    --                         self.animal.lantern:attachLantern(itemHeld)
-
-    --                         self.animal.lantern.addLight(lightParent, itemHeld)
-    --                         --Attach the light
-    --                         if self.animal.lantern:isOn() then
-    --                             self.animal.lantern:turnLanternOn()
-    --                         else
-    --                             self.animal.lantern:turnLanternOff()
-    --                         end
-    --                     end
-    --                 else
-    --                     --detach item and light
-    --                     if onNode:getObjectByName("LanternLight") then
-    --                         self.animal.lantern:detachLantern()
-    --                         self.animal.lantern:turnLanternOff()
-    --                     end
-    --                 end
-    --             end
-    --         end
-    --     end
-    -- end
 end
 
 local function findNamedParentNode(node, name)
@@ -189,6 +124,7 @@ function Pack:grabItem(nodeConfig)
                         count = count
                     }
                     event.trigger("Ashfall:triggerPackUpdate")
+                    self:setSwitch()
                     return true
                 end
             end
@@ -210,7 +146,7 @@ function Pack:takeItemLookingAt()
     }
     if results then
         local nodeManager = NodeManager.registeredNodeManagers["GuarWhisperer_PackNodes"]
-        ---@param nodeConfig GuarWhisperer.NodeManager.InventoryAttachNode
+        ---@param nodeConfig CraftingFramework.NodeManager.InventoryAttachNode
         for _, nodeConfig in ipairs(nodeManager.nodes) do
             for _, result in ipairs(results) do
                 if result and result.object then
@@ -251,7 +187,6 @@ function Pack:takeItemLookingAt()
                 end
             end
         end
-        self:setSwitch()
     end
     logger:debug("Entering pack")
     self.animal.refData.triggerDialog = true

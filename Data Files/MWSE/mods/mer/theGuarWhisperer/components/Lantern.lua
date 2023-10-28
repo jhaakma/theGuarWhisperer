@@ -1,5 +1,5 @@
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
+local logger = common.createLogger("Lantern")
 
 
 ---@class GuarWhisperer.Lantern.Animal.refData
@@ -223,7 +223,11 @@ function Lantern:isOn()
 end
 
 function Lantern:getLanternFromInventory()
-    return self.animal:getItemFromInventory(self:getLanternIds())
+    for item in pairs(self:getLanternIds()) do
+        if self.animal.reference.object.inventory:contains(item) then
+            return tes3.getObject(item)
+        end
+    end
 end
 
 

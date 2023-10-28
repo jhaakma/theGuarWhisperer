@@ -1,6 +1,7 @@
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
+local logger = common.createLogger("Genetics")
 local moodConfig = require("mer.theGuarWhisperer.moodConfig")
+local Controls = require("mer.theGuarWhisperer.services.Controls")
 
 ---@alias GuarWhisperer.Gender
 ---|'"male"' Male
@@ -49,13 +50,13 @@ end
 
 ---Sets birth time to now
 function Genetics:setBirthTime()
-    self.animal.refData.birthTime = common.getHoursPassed()
+    self.animal.refData.birthTime = common.util.getHoursPassed()
 end
 
 ---Gets the time this guar was born
 ---@return number
 function Genetics:getBirthTime()
-    return self.animal.refData.birthTime or common.getHoursPassed()
+    return self.animal.refData.birthTime or common.util.getHoursPassed()
 end
 
 --Averages the attributes of mom and dad and adds some random mutation
@@ -136,7 +137,7 @@ function Genetics:getCanConceive()
     if not self.animal.mobile.hasFreeAction then return false end
     if self.animal.needs:getTrust() < moodConfig.skillRequirements.breed then return false end
     if self.animal.refData.lastBirthed then
-        local now = common.getHoursPassed()
+        local now = common.util.getHoursPassed()
         local hoursSinceLastBirth = now - self.animal.refData.lastBirthed
         local enoughTimePassed = hoursSinceLastBirth > self.animal.animalType.birthIntervalHours
         if not enoughTimePassed then return false end
@@ -174,7 +175,7 @@ function Genetics:breed()
             partner:playAnimation("pet")
             local baby
             timer.start{ type = timer.real, duration = 1, callback = function()
-                self.animal.refData.lastBirthed  = common.getHoursPassed()
+                self.animal.refData.lastBirthed  = common.util.getHoursPassed()
 
                 local babyObject = common.createCreatureCopy(self.animal.reference.baseObject)
                 babyObject.name = string.format("%s Jr", self.animal:getName())
@@ -208,7 +209,7 @@ function Genetics:breed()
                     end
                 end)
             end}
-            common.fadeTimeOut(0.5, 2, function()
+            Controls.fadeTimeOut(0.5, 2, function()
                 timer.delayOneFrame(function()
                     if baby then
                         baby:rename(true)
@@ -231,7 +232,7 @@ function Genetics:breed()
         end
         table.insert( buttons, { text = "Cancel"})
 
-        common.messageBox{
+        tes3ui.showMessageMenu{
             message = string.format("Which partner would you like to breed %s with?", self.animal:getName() ),
             buttons = buttons
         }
@@ -241,7 +242,7 @@ function Genetics:breed()
 end
 
 function Genetics:updateGrowth()
-    local age = common.getHoursPassed() - self:getBirthTime()
+    local age = common.util.getHoursPassed() - self:getBirthTime()
     if self:isBaby() then
         if age > self.animal.animalType.hoursToMature then
             logger:debug("No longer a baby, turn into an adult")

@@ -1,7 +1,7 @@
 local Animal = require("mer.theGuarWhisperer.Animal")
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.log
+local logger = common.createLogger("AnimalConverter")
 
 ---@class GuarWhisperer.AnimalConverter.convert.params
 ---@field reference tes3reference
@@ -74,7 +74,6 @@ function AnimalConverter.convert(reference, convertConfig)
     reference.data.TGW_FLAGGED_FOR_DELETE = true
     --Remove old ref
     reference:delete()
-
 
     Animal.initialiseRefData(newRef, convertConfig.type)
     table.copymissing(newRef.data.tgw, convertConfig.extra)
