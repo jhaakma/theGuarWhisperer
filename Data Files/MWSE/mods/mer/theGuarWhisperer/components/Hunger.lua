@@ -18,6 +18,7 @@ end
 
 function Hunger:feed()
     timer.delayOneFrame(function()
+        if not self.animal:isValid() then return end
         tes3ui.showInventorySelectMenu{
             reference = tes3.player,
             title = string.format("Feed %s", self.animal:getName()),
@@ -85,6 +86,7 @@ function Hunger:eatFromInventory(item, itemData)
     timer.start{
         duration = 1,
         callback = function()
+            if not self.animal:isValid() then return end
             event.trigger("GuarWhisperer:AteFood", { reference = self.animal.reference, itemId = itemId }  )
             tes3.playSound{ reference = self.animal.reference, sound = "Swallow" }
             tes3.messageBox(

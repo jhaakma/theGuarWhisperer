@@ -19,23 +19,29 @@ local function onEquipFlute(e)
                 logger:debug("Finding companions to summon")
                 ---@param animal GuarWhisperer.Animal
                 for _, animal in ipairs(Animal.getAll()) do
+                    local animalName = animal:getName()
                     if not animal:canBeSummoned() then
-                        logger:debug("%s cannot be summoned", animal:getName())
+                        logger:debug("%s cannot be summoned", animalName)
                     else
-                        logger:debug("%s can be summoned, adding to list", animal:getName())
+                        logger:debug("%s can be summoned, adding to list", animalName)
                         table.insert(buttons, {
-                            text = animal:getName(),
+                            text = animalName,
                             callback = function()
                                 timer.delayOneFrame(function()
+                                    if not animal:isValid() then return end
                                     tes3.playSound{ reference = tes3.player, sound = common.fluteSound, }
                                     animal:wait()
                                     timer.start{
                                         duration = 1,
-                                        callback = function() animal:teleportToPlayer(400) end
+                                        callback = function()
+                                            if animal:isValid() then animal:teleportToPlayer(400) end
+                                        end
                                     }
                                     Controls.fadeTimeOut( 0, 2, function()
-                                        animal:playAnimation("pet")
-                                        animal:follow()
+                                        if animal:isValid() then
+                                            animal:playAnimation("pet")
+                                            animal:follow()
+                                        end
                                     end)
                                 end)
                             end

@@ -29,7 +29,6 @@
 ---@class GuarWhisperer.Animal.RefData
 ---@field name string
 ---@field attackPolicy GuarWhisperer.Animal.AttackPolicy
----@field potionPolicy GuarWhisperer.Animal.PotionPolicy
 ---@field followingRef tes3reference|"player"
 ---@field aiState GuarWhisperer.Animal.AIState
 ---@field previousAiState GuarWhisperer.Animal.AIState
@@ -43,10 +42,11 @@
 ---@field triggerDialog boolean trigger dialog on next activate
 
 ---@class GuarWhisperer.Animal
----@field refData GuarWhisperer.Animal.RefData
 ---@field reference tes3reference
+---@field safeRef mwseSafeObjectHandle
+---@field refData GuarWhisperer.Animal.RefData
 ---@field mobile tes3mobileCreature
----@field object tes3object
+---@field object tes3creature
 ---@field animalType GuarWhisperer.AnimalType
 ---@field attributes table<string, number>
 ---@field stats GuarWhisperer.Stats
@@ -58,6 +58,7 @@
 ---@field needs GuarWhisperer.Needs
 ---@field hunger GuarWhisperer.Hunger
 local Animal = {}
+
 
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
 local harvest = require("mer.theGuarWhisperer.harvest")
@@ -111,6 +112,8 @@ Animal.pickableRotations = {
 ---------------------
 
 -- Reference Manager for Animal references
+---@class GuarWhisperer.Animal.ReferenceManager : CraftingFramework.ReferenceManager
+---@field references table<tes3reference, GuarWhisperer.Animal>
 Animal.referenceManager = CraftingFramework.ReferenceManager:new{
     id = "GuarWhisperer_Animals",
     requirements = function(_, ref)
@@ -122,7 +125,7 @@ Animal.referenceManager = CraftingFramework.ReferenceManager:new{
             --Cache the animal class
             refManager.references[ref] = animal
             --intiialise
-            animal:intialiseOnActivated()
+            animal:initialiseOnActivated()
         else
             logger:warn("Ref %s with tgw data was not valid animal", ref)
         end
@@ -220,11 +223,12 @@ function Animal:new(reference)
     end
     local newAnimal = {
         reference = reference,
-        object = reference.object,
+        object = reference.baseObject,
         mobile = reference.mobile,
         animalType = animalType,
         refData = reference.data.tgw,
     }
+    newAnimal.safeRef = tes3.makeSafeObjectHandle(reference)
     newAnimal.stats = Stats.new(newAnimal)
     newAnimal.aiFixer = AIFixer.new(newAnimal)
     newAnimal.pack = Pack.new(newAnimal)
@@ -241,15 +245,24 @@ function Animal:new(reference)
     return newAnimal
 end
 
+---Check if the reference associated with this Animal is still valid
+---@return boolean isValid
+function Animal:isValid()
+    local valid = self.safeRef:valid()
+    if not valid then
+        logger:warn("%s's reference is invalid", self:getName())
+    end
+    return valid
+end
 
 --- Get the animals' name
 ---@return string
 function Animal:getName()
-    return self.reference.baseObject.name
+    return self.object.name
 end
 
 function Animal:setName(newName)
-    self.reference.baseObject.name = newName
+    self.object.name = newName
 end
 
 
@@ -265,20 +278,8 @@ function Animal:getAttackPolicy()
     return self.refData.attackPolicy
 end
 
---- Set the potion policy
----@param policy GuarWhisperer.Animal.PotionPolicy
-function Animal:setPotionPolicy(policy)
-    self.refData.potionPolicy = policy
-end
 
---- Get the potion policy
----@return GuarWhisperer.Animal.PotionPolicy
-function Animal:getPotionPolicy()
-    return self.refData.potionPolicy
-end
-
-
-function Animal:intialiseOnActivated()
+function Animal:initialiseOnActivated()
     if not self:isDead() then
         self:playAnimation("idle")
         if self:hasCarriedItems() then
@@ -519,16 +520,14 @@ function Animal:attack(target, blockMessage)
     end
     self.refData.previousAiState = self:getAI()
     self:follow()
-    local ref = self.reference
     local safeTargetRef = tes3.makeSafeObjectHandle(target)
-    local safeRef = tes3.makeSafeObjectHandle(ref)
     timer.start{
         duration = 0.5,
         callback = function()
             if not (safeTargetRef and safeTargetRef:valid()) then return end
-            if not (safeRef and safeRef:valid()) then return end
+            if not self:isValid() then return end
             if not target.mobile then return end
-            ref.mobile:startCombat(target.mobile)
+            self.reference.mobile:startCombat(target.mobile)
             self.refData.aiState = "attacking"
         end
     }
@@ -544,6 +543,10 @@ function Animal:moveToAction(reference, command, noMessage)
     local previousPosition
     local distanceTimer
     local function checkRefDistance()
+        if not self:isValid() then
+            distanceTimer:cancel()
+            return
+        end
         self.reference.mobile.isRunning = true
         local distances = {
             fetch = 100,
@@ -562,7 +565,6 @@ function Animal:moveToAction(reference, command, noMessage)
                     currentPosition:distance(previousPosition) > 5 )
         previousPosition = self.reference.position:copy()
         if not stillFetching then
-
             --check reference hasn't been picked up
             if not common.fetchItems[reference] == true then
                 self:returnTo()
@@ -573,8 +575,8 @@ function Animal:moveToAction(reference, command, noMessage)
                 end
                 self:restorePreviousAI()
             else
-
                 timer.delayOneFrame(function()
+                    if not self:isValid() then return end
                     self.reference.mobile.isRunning = false
                     if command == "eat" then
                         self:playAnimation("eat")
@@ -599,6 +601,7 @@ function Animal:moveToAction(reference, command, noMessage)
                     type = timer.simulate,
                     duration = 1,
                     callback = function()
+                        if not self:isValid() then return end
                         if common.fetchItems[reference] == true then
                             local duration
                             if command == "harvest" then
@@ -611,6 +614,7 @@ function Animal:moveToAction(reference, command, noMessage)
                                     type = timer.simulate,
                                     duration = 1,
                                     callback = function()
+                                        if not self:isValid() then return end
                                         tes3.playSound{ reference = self.reference, sound = "Swallow" }
                                     end
                                 }
@@ -628,6 +632,7 @@ function Animal:moveToAction(reference, command, noMessage)
                                 type = timer.simulate,
                                 duration = duration,
                                 callback = function()
+                                    if not self:isValid() then return end
                                     if command == "fetch" or command == "harvest" then
                                         self.stats:progressLevel(self.animalType.lvl.fetchProgress)
                                         self:returnTo()
@@ -702,6 +707,7 @@ function Animal:goHome(e)
         else
             self:wait()
             timer.delayOneFrame(function()
+                if not self:isValid() then return end
                 self:wander()
             end)
         end
@@ -806,7 +812,6 @@ end
 
 function Animal:removeItemsFromMouth()
     local node = self.reference.sceneNode:getObjectByName("ATTACH_MOUTH")
-
     for _, item in pairs(self:getCarriedItems()) do
         local pickedItem = node:getObjectByName("Picked_Up_Item")
         while pickedItem do
@@ -817,6 +822,7 @@ function Animal:removeItemsFromMouth()
         if common.balls[item.id:lower()] then
             if tes3.player.mobile.readiedWeapon == nil then
                 timer.delayOneFrame(function()
+                    if not self:isValid() then return end
                     logger:debug("Re-equipping ball")
                     tes3.player.mobile:equip{ item = item }
                     tes3.player.mobile.weaponReady = true
@@ -1017,6 +1023,7 @@ function Animal:eatFromWorld(target)
         type = timer.simulate,
         duration = 1,
         callback = function()
+            if not self:isValid() then return end
             event.trigger("GuarWhisperer:AteFood", { reference = self.reference, itemId = itemId } )
             self:removeItemsFromMouth()
             self.refData.carriedItems = nil
@@ -1059,6 +1066,7 @@ function Animal:handOverItems()
         if common.balls[item.id:lower()] then
             if tes3.player.mobile.readiedWeapon == nil then
                 timer.delayOneFrame(function()
+                    if not self:isValid() then return end
                     logger:debug("Re-equipping ball")
                     tes3.player.mobile:equip{ item = item.id }
                     tes3.player.mobile.weaponReady = true
@@ -1086,6 +1094,7 @@ function Animal:handOverItems()
     --make happier
     self.needs:modPlay(self.animalType.play.fetchValue)
     timer.delayOneFrame(function()
+        if not self:isValid() then return end
         self:playAnimation("happy")
     end)
 end
@@ -1245,6 +1254,7 @@ function Animal:updateAI()
             timer.start{
                 duration = 0.5,
                 callback = function()
+                    if not self:isValid() then return end
                     if self.refData.aiState == "wandering" then
                         logger:debug("Still need to wander, setting now")
                         self:wander()
@@ -1296,7 +1306,7 @@ function Animal:updateTravelSpells()
             if not tes3.isAffectedBy{ reference = self.reference, effect = effect } then
                 if self:getAI() == "following" then
                     logger:debug("Adding spell to %s", self:getName())
-                    self.reference.object.spells:remove(spell)
+                    self.object.spells:remove(spell)
                     tes3.addSpell{reference = self.reference, spell = spell }
                 end
             end
@@ -1345,6 +1355,7 @@ function Animal:takeAction(time)
     timer.start{
         duration = time,
         callback = function()
+            if not self:isValid() then return end
             self.reference.tempData.tgw_takingAction = false
         end
     }

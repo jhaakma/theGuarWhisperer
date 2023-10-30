@@ -89,6 +89,7 @@ local function activateAnimal(e)
                                 timer.start{
                                     duration = 1.5,
                                     callback = function()
+                                        if not newAnimal:isValid() then return end
                                         newAnimal:rename()
                                         timer.delayOneFrame(function()
                                             local name = newAnimal:getName()
@@ -168,7 +169,6 @@ end
 local function guarTimer()
     if not common.getModEnabled() then return end
     Animal.referenceManager:iterateReferences(function(_, animal)
-        --animal.pack:setSwitch()
         if animal:isActive() then
             animal.genetics:updateGrowth()
             animal:updateAI()

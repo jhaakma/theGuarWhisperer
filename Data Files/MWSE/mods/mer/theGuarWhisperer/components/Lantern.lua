@@ -224,7 +224,7 @@ end
 
 function Lantern:getLanternFromInventory()
     for item in pairs(self:getLanternIds()) do
-        if self.animal.reference.object.inventory:contains(item) then
+        if self.animal.object.inventory:contains(item) then
             return tes3.getObject(item)
         end
     end

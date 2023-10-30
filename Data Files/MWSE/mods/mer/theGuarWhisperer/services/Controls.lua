@@ -35,7 +35,7 @@ function Controls.fadeTimeOut( hoursPassed, secondsTaken, callback )
     --Halfway through, advance gamehour
     local iterations = 10
     timer.start({
-        type = timer.real,
+        type = timer.simulate,
         iterations = iterations,
         duration = ( secondsTaken / iterations ),
         callback = (
@@ -47,7 +47,7 @@ function Controls.fadeTimeOut( hoursPassed, secondsTaken, callback )
     })
     --All the way through, fade back in
     timer.start({
-        type = timer.real,
+        type = timer.simulate,
         iterations = 1,
         duration = secondsTaken,
         callback = (
@@ -56,7 +56,7 @@ function Controls.fadeTimeOut( hoursPassed, secondsTaken, callback )
                 tes3.fadeIn({ duration = fadeBackTime })
                 callback()
                 timer.start({
-                    type = timer.real,
+                    type = timer.simulate,
                     iterations = 1,
                     duration = fadeBackTime,
                     callback = fadeTimeIn

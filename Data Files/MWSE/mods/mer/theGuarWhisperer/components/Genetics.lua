@@ -174,44 +174,48 @@ function Genetics:breed()
         local function doBreed(partner)
             partner:playAnimation("pet")
             local baby
-            timer.start{ type = timer.real, duration = 1, callback = function()
-                self.animal.refData.lastBirthed  = common.util.getHoursPassed()
-
-                local babyObject = common.createCreatureCopy(self.animal.reference.baseObject)
-                babyObject.name = string.format("%s Jr", self.animal:getName())
-
-                local babyRef = tes3.createReference{
-                    object = babyObject,
-                    position = self.animal.reference.position,
-                    orientation =  {
-                        self.animal.reference.orientation.x,
-                        self.animal.reference.orientation.y,
-                        self.animal.reference.orientation.z,
-                    },
-                    cell = self.animal.reference.cell,
-                    scale = self.animal.animalType.babyScale
-                }
-                timer.delayOneFrame(function()
-                    self.animal.initialiseRefData(babyRef, self.animal.animalType)
-                    baby = self.animal:new(babyRef)
-                    if baby then
-                        baby.genetics:setIsBaby(true)
-                        baby.needs:setTrust(self.animal.animalType.trust.babyLevel)
-                        baby.genetics:setBirthTime()
-                        --baby:inheritGenes(self, partner)
-                        baby.genetics:updateGrowth()
-                        baby:setAttackPolicy("passive")
-                        baby:wander()
-                        babyRef.mobile.fight = 0
-                        babyRef.mobile.flee = 0
-                    else
-                        logger:error("Failed to make baby")
-                    end
-                end)
-            end}
+            timer.start{
+                type = timer.real,
+                duration = 1,
+                callback = function()
+                    if not self.animal:isValid() then return end
+                    self.animal.refData.lastBirthed  = common.util.getHoursPassed()
+                    local babyObject = common.createCreatureCopy(self.animal.reference.baseObject)
+                    babyObject.name = string.format("%s Jr", self.animal:getName())
+                    local babyRef = tes3.createReference{
+                        object = babyObject,
+                        position = self.animal.reference.position,
+                        orientation =  {
+                            self.animal.reference.orientation.x,
+                            self.animal.reference.orientation.y,
+                            self.animal.reference.orientation.z,
+                        },
+                        cell = self.animal.reference.cell,
+                        scale = self.animal.animalType.babyScale
+                    }
+                    timer.delayOneFrame(function()
+                        if not self.animal:isValid() then return end
+                        self.animal.initialiseRefData(babyRef, self.animal.animalType)
+                        baby = self.animal:new(babyRef)
+                        if baby then
+                            baby.genetics:setIsBaby(true)
+                            baby.needs:setTrust(self.animal.animalType.trust.babyLevel)
+                            baby.genetics:setBirthTime()
+                            --baby:inheritGenes(self, partner)
+                            baby.genetics:updateGrowth()
+                            baby:setAttackPolicy("passive")
+                            baby:wander()
+                            babyRef.mobile.fight = 0
+                            babyRef.mobile.flee = 0
+                        else
+                            logger:error("Failed to make baby")
+                        end
+                    end)
+                end
+            }
             Controls.fadeTimeOut(0.5, 2, function()
                 timer.delayOneFrame(function()
-                    if baby then
+                    if baby and baby:isValid() then
                         baby:rename(true)
                     end
                 end)

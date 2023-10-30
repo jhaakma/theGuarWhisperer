@@ -101,6 +101,7 @@ event.register("determinedAction", function(e)
                 logger:debug("Target is %s, blocking action %s", target.reference, action.description)
                 e.session.selectedAction = ACTION.undecided
                 timer.delayOneFrame(function()
+                    if not animal:isValid() then return end
                     animal.reference.mobile:stopCombat(true)
                 end)
             end
@@ -108,10 +109,12 @@ event.register("determinedAction", function(e)
 
         --Stop combat if too far away
         local targetTooFar = target and target.position:distance(tes3.player.position) > 2000
+        local safeTarget = tes3.makeSafeObjectHandle(target)
         if targetTooFar then
             logger:debug("Enemy too far away from player, returning to player")
             timer.delayOneFrame(function()
-
+                if not animal:isValid() then return end
+                if not ( safeTarget and safeTarget:isValid()) then return end
                 if target then -- and target.actionData.aiBehaviorState == tes3.aiBehaviorState.flee then
                     logger:warn("target aiBehaviorState is %d = %s", target.actionData.aiBehaviorState, table.find(tes3.aiBehaviorState, target.actionData.aiBehaviorState))
                     logger:debug("Stopping target combat")
@@ -122,6 +125,7 @@ event.register("determinedAction", function(e)
                 animal:wait()
                 --wait to disengage, then follow
                 timer.delayOneFrame(function()
+                    if not animal:isValid() then return end
                     animal:teleportToPlayer(100)
                     animal:follow()
                 end)

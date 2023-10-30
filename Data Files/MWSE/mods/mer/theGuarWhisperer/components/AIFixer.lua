@@ -25,6 +25,7 @@ end
 ---
 function AIFixer:resetFollow()
     timer.delayOneFrame(function()timer.delayOneFrame(function()
+        if not self.animal:isValid() then return end
         if self.animal:distanceFrom(tes3.player) > 500 then
             local lastKnownPosition = self.animal.reference.position:copy()
             local lastKnownCell = self.animal.reference.cell
@@ -44,6 +45,7 @@ function AIFixer:resetFollow()
             }
             -- Wait a frame
             timer.delayOneFrame(function()
+                if not self.animal:isValid() then return end
                 -- Then return to where it was
                 tes3.positionCell{
                     cell = lastKnownCell,
@@ -96,7 +98,7 @@ function AIFixer:fixSoundBug()
         tes3.removeSound{ reference = self.animal.reference, "guar roar"}
         local container = createContainer()
         --Transfer all lights, preserving item data, from guar to player
-        for _, stack in pairs(self.animal.reference.object.inventory) do
+        for _, stack in pairs(self.animal.object.inventory) do
             if stack.object.objectType == tes3.objectType.light then
                 tes3.transferItem{
                     from = self.animal.reference,
@@ -109,6 +111,7 @@ function AIFixer:fixSoundBug()
         end
         --now transfer them all back after a frame
         timer.delayOneFrame(function()
+            if not self.animal:isValid() then return end
             for _, stack in pairs(container.object.inventory) do
                 if stack.object.objectType == tes3.objectType.light then
                     tes3.transferItem{

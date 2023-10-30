@@ -33,145 +33,145 @@ this.commands = {
         return targetObj and
             targetObj.objectType == tes3.objectType.npc
             and animal.needs:hasSkillReqs("charm")
-    end
-},
-{
-    --ATTACK
-    label = function(e)
-        return string.format("Attack %s", e.targetData.reference.object.name)
-    end,
-    description = "Attacks the selected target.",
-    command = function(e)
-        ---@type GuarWhisperer.Animal
-        local animal = e.activeCompanion
-        if animal:attemptCommand(50, 80) then
-            animal:setAttackPolicy("defend")
-            animal:attack(e.targetData.reference)
         end
-    end,
-    requirements = function(e)
-        ---@type GuarWhisperer.Animal
-        local animal = e.activeCompanion
-        local targetMobile = e.targetData.reference
-            and e.targetData.reference.mobile
-        --Has target
-        if not targetMobile then
-            return false
-        end
-        --Target is alive
-        if targetMobile.health.current < 1 then
-            return false
-        end
-        --Target isn't friendly
-        ---@param actor tes3mobileActor
-        for actor in tes3.iterate(tes3.mobilePlayer.friendlyActors) do
-            if actor.reference == e.targetData.reference then
+    },
+    {
+        --ATTACK
+        label = function(e)
+            return string.format("Attack %s", e.targetData.reference.object.name)
+        end,
+        description = "Attacks the selected target.",
+        command = function(e)
+            ---@type GuarWhisperer.Animal
+            local animal = e.activeCompanion
+            if animal:attemptCommand(50, 80) then
+                animal:setAttackPolicy("defend")
+                animal:attack(e.targetData.reference)
+            end
+        end,
+        requirements = function(e)
+            ---@type GuarWhisperer.Animal
+            local animal = e.activeCompanion
+            local targetMobile = e.targetData.reference
+                and e.targetData.reference.mobile
+            --Has target
+            if not targetMobile then
                 return false
             end
+            --Target is alive
+            if targetMobile.health.current < 1 then
+                return false
+            end
+            --Target isn't friendly
+            ---@param actor tes3mobileActor
+            for actor in tes3.iterate(tes3.mobilePlayer.friendlyActors) do
+                if actor.reference == e.targetData.reference then
+                    return false
+                end
+            end
+            --Target isn't another companion
+            if Animal.get(e.targetData.reference) then
+                return false
+            end
+            --Has prerequisites for attack command
+            if not animal.needs:hasSkillReqs("attack") then
+                return false
+            end
+            --Not passive
+            if animal.refData.attackPolicy == "passive" and not tes3.mobilePlayer.inCombat then
+                return false
+            end
+            return true
         end
-        --Target isn't another companion
-        if Animal.get(e.targetData.reference) then
-            return false
-        end
-        --Has prerequisites for attack command
-        if not animal.needs:hasSkillReqs("attack") then
-            return false
-        end
-        --Not passive
-        if animal.refData.attackPolicy == "passive" and not tes3.mobilePlayer.inCombat then
-             return false
-        end
-        return true
-    end
-},
+    },
 
-{
-    --EAT
-    label = function(e)
-        return string.format("Eat %s", e.targetData.reference.object.name)
-    end,
-    description = "Eat the selected item or plant.",
-    command = function(e)
-        ---@type GuarWhisperer.Animal
-        local animal = e.activeCompanion
-        if animal:attemptCommand(40, 80) then
-            animal:moveToAction(e.targetData.reference, "eat")
+    {
+        --EAT
+        label = function(e)
+            return string.format("Eat %s", e.targetData.reference.object.name)
+        end,
+        description = "Eat the selected item or plant.",
+        command = function(e)
+            ---@type GuarWhisperer.Animal
+            local animal = e.activeCompanion
+            if animal:attemptCommand(40, 80) then
+                animal:moveToAction(e.targetData.reference, "eat")
+            end
+        end,
+        requirements = function(e)
+            ---@type GuarWhisperer.Animal
+            local animal = e.activeCompanion
+            return animal
+                and (not animal:hasCarriedItems())
+                and e.targetData.reference ~= nil
+                and animal:canEat(e.targetData.reference)
+                and animal.needs:hasSkillReqs("eat")
         end
-    end,
-    requirements = function(e)
-        ---@type GuarWhisperer.Animal
-        local animal = e.activeCompanion
-        return animal
-            and (not animal:hasCarriedItems())
-            and e.targetData.reference ~= nil
-            and animal:canEat(e.targetData.reference)
-            and animal.needs:hasSkillReqs("eat")
-    end
-},
-{
-    --HARVEST
-    label = function(e)
-        return string.format("Harvest %s", e.targetData.reference.object.name)
-    end,
-    description = "Harvest the selected plant.",
-    command = function(e)
-        ---@type GuarWhisperer.Animal
-        local animal = e.activeCompanion
-        if animal:attemptCommand(50, 80) then
-            animal:moveToAction(e.targetData.reference, "harvest")
+    },
+    {
+        --HARVEST
+        label = function(e)
+            return string.format("Harvest %s", e.targetData.reference.object.name)
+        end,
+        description = "Harvest the selected plant.",
+        command = function(e)
+            ---@type GuarWhisperer.Animal
+            local animal = e.activeCompanion
+            if animal:attemptCommand(50, 80) then
+                animal:moveToAction(e.targetData.reference, "harvest")
+            end
+        end,
+        requirements = function(e)
+            ---@type GuarWhisperer.Animal
+            local animal = e.activeCompanion
+            return animal:canHarvest(e.targetData.reference)
+                and tes3.hasOwnershipAccess{ target = e.targetData.reference }
+                and animal.needs:hasSkillReqs("fetch")
         end
-    end,
-    requirements = function(e)
-        ---@type GuarWhisperer.Animal
-        local animal = e.activeCompanion
-        return animal:canHarvest(e.targetData.reference)
-            and tes3.hasOwnershipAccess{ target = e.targetData.reference }
-            and animal.needs:hasSkillReqs("fetch")
-    end
-},
-{
-    --FETCH
-    label = function(e)
-        return string.format("Fetch %s", e.targetData.reference.object.name)
-    end,
-    description = "Bring the selected item back to the player.",
-    command = function(e)
-        ---@type GuarWhisperer.Animal
-        local animal = e.activeCompanion
-        if animal:attemptCommand(50, 80) then
-            animal:moveToAction(e.targetData.reference, "fetch")
+    },
+    {
+        --FETCH
+        label = function(e)
+            return string.format("Fetch %s", e.targetData.reference.object.name)
+        end,
+        description = "Bring the selected item back to the player.",
+        command = function(e)
+            ---@type GuarWhisperer.Animal
+            local animal = e.activeCompanion
+            if animal:attemptCommand(50, 80) then
+                animal:moveToAction(e.targetData.reference, "fetch")
+            end
+        end,
+        requirements = function(e)
+            ---@type GuarWhisperer.Animal
+            local animal = e.activeCompanion
+            return animal:canFetch(e.targetData.reference)
+                and tes3.hasOwnershipAccess{ target = e.targetData.reference }
+                and animal.needs:hasSkillReqs("fetch")
         end
-    end,
-    requirements = function(e)
-        ---@type GuarWhisperer.Animal
-        local animal = e.activeCompanion
-        return animal:canFetch(e.targetData.reference)
-            and tes3.hasOwnershipAccess{ target = e.targetData.reference }
-            and animal.needs:hasSkillReqs("fetch")
-    end
-},
-{
-    --STEAL
-    label = function(e)
-        return string.format("Steal %s", e.targetData.reference.object.name)
-    end,
-    description = "Steal the selected item and bring it back to the player. Dont get caught!",
-    command = function(e)
-        ---@type GuarWhisperer.Animal
-        local animal = e.activeCompanion
-        if animal:attemptCommand(60, 90) then
-            animal:moveToAction(e.targetData.reference, "fetch")
-        end
-    end,
-    requirements = function(e)
-        ---@type GuarWhisperer.Animal
-        local animal = e.activeCompanion
-        return (not animal:hasCarriedItems())
-            and animal:canFetch(e.targetData.reference)
-            and (not tes3.hasOwnershipAccess{ target = e.targetData.reference })
-    end,
-    doSteal = true
-},
+    },
+    {
+        --STEAL
+        label = function(e)
+            return string.format("Steal %s", e.targetData.reference.object.name)
+        end,
+        description = "Steal the selected item and bring it back to the player. Dont get caught!",
+        command = function(e)
+            ---@type GuarWhisperer.Animal
+            local animal = e.activeCompanion
+            if animal:attemptCommand(60, 90) then
+                animal:moveToAction(e.targetData.reference, "fetch")
+            end
+        end,
+        requirements = function(e)
+            ---@type GuarWhisperer.Animal
+            local animal = e.activeCompanion
+            return (not animal:hasCarriedItems())
+                and animal:canFetch(e.targetData.reference)
+                and (not tes3.hasOwnershipAccess{ target = e.targetData.reference })
+        end,
+        doSteal = true
+    },
 
     --priority 4: close-up commands
     {
@@ -306,6 +306,7 @@ this.commands = {
             ---@type GuarWhisperer.Animal
             local animal = e.activeCompanion
             timer.delayOneFrame(function()
+                if not animal:isValid() then return end
                 tes3.positionCell{
                     reference = animal.reference,
                     position = tes3.player.position,

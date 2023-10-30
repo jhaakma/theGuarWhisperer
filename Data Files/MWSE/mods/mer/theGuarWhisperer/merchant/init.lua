@@ -6,7 +6,7 @@ local CraftingFramework = require("CraftingFramework")
 local supplies = {
     mer_tgw_flute = -1,
     mer_tgw_guarpack = -1,
-    mer_tgw_ball = -1
+    mer_tgw_ball = -3
 }
 
 local containers = {}

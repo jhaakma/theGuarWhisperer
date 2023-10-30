@@ -27,7 +27,7 @@ function Pack:hasPackItem(packItem)
         return true
     end
     for _, item in ipairs(packItem.items) do
-        if self.animal.reference.object.inventory:contains(item) then
+        if self.animal.object.inventory:contains(item) then
             return true
         end
     end
@@ -52,7 +52,7 @@ function Pack:unequipPack()
     if self.animal.reference.context and self.animal.reference.context.Companion then
         self.animal.reference.context.companion = 0
     end
-    for _, stack in pairs(self.animal.reference.object.inventory) do
+    for _, stack in pairs(self.animal.object.inventory) do
         tes3.transferItem{
             from = self.animal.reference,
             to = tes3.player,
@@ -103,7 +103,7 @@ end
 
 function Pack:grabItem(nodeConfig)
     for itemId in pairs(nodeConfig:getItems(self.animal.reference)) do
-        local inventory = self.animal.reference.object.inventory
+        local inventory = self.animal.object.inventory
         if inventory:contains(itemId) then
             logger:debug("Found %s in inventory", itemId)
             for _, stack in pairs(inventory) do
