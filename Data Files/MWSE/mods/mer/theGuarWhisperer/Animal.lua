@@ -223,7 +223,7 @@ function Animal:new(reference)
     end
     local newAnimal = {
         reference = reference,
-        object = reference.baseObject,
+        object = reference.object,
         mobile = reference.mobile,
         animalType = animalType,
         refData = reference.data.tgw,

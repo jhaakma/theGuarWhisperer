@@ -17,7 +17,7 @@ local bushcraftingRecipes = {
         },
         category = "Toys",
         rotationAxis = "z",
-        previewScale = 0.8,
+        previewScale = 0.7,
     },
 }
 
@@ -42,6 +42,8 @@ local carvingRecipes = {
             }
         },
         category = "Guar Equipment",
+        rotationAxis = "y",
+        previewScale = 1.2
     }
 }
 

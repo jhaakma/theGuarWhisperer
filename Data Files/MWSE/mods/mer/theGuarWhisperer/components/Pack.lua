@@ -82,6 +82,7 @@ function Pack:hasPack()
 end
 
 function Pack:setSwitch()
+    logger:debug("Setting switch")
     if not self.animal.reference.sceneNode then return end
     if not self.animal.reference.mobile then return end
     NodeManager.registeredNodeManagers["GuarWhisperer_PackNodes"]:processReference(self.animal.reference)
