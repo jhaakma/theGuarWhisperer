@@ -1,15 +1,14 @@
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("MCM")
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
-local config = common.config
+local mcmConfig = common.config.mcm
 local function registerMcm()
 
     local template = mwse.mcm.createTemplate{ name = "The Guar Whisperer"}
     template.onClose = function()
-        config.save()
+        common.config.save()
         event.trigger("GuarWhisperer:McmUpdated")
     end
-    template:saveOnClose(config.configPath, config)
     template:register()
 
     local settingsPage = template:createSideBarPage("Settings")
@@ -44,26 +43,26 @@ local function registerMcm()
         settingsCategory:createYesNoButton{
             label = "Enable Mod",
             description = "Turn this mod on or off.",
-            variable = mwse.mcm.createTableVariable{ id = "enabled", table = config }
+            variable = mwse.mcm.createTableVariable{ id = "enabled", table = mcmConfig }
         }
 
         settingsCategory:createKeyBinder{
             label = "Toggle Command Menu",
             description = "The key or key combination used to toggle the context command menu. Default: q",
             allowCombinations = true,
-            variable = mwse.mcm.createTableVariable{ id = "commandToggleKey", table = config }
+            variable = mwse.mcm.createTableVariable{ id = "commandToggleKey", table = mcmConfig }
         }
 
         settingsCategory:createYesNoButton{
             label = "Display all Gear",
             description = "Enable this if you don't have Ashfall installed but want to see all the cool camping equipment on the back of your pack guar.",
-            variable = mwse.mcm.createTableVariable{ id = "displayAllGear", table = config }
+            variable = mwse.mcm.createTableVariable{ id = "displayAllGear", table = mcmConfig }
         }
 
         settingsCategory:createSlider{
             label = "Set Teleport Distance",
             description = "Set the minimum distance from the player that will trigger a teleport when a guar is following you.",
-            variable = mwse.mcm.createTableVariable{ id = "teleportDistance", table = config },
+            variable = mwse.mcm.createTableVariable{ id = "teleportDistance", table = mcmConfig },
             min = 500,
             max = 3000,
             jump = 100,
@@ -84,7 +83,7 @@ local function registerMcm()
                 { label = "ERROR", value = "ERROR"},
                 { label = "NONE", value = "NONE"},
             },
-            variable = mwse.mcm.createTableVariable{ id = "logLevel", table = config },
+            variable = mwse.mcm.createTableVariable{ id = "logLevel", table = mcmConfig },
             callback = function(self)
                 logger:setLogLevel(self.variable.value)
             end
@@ -156,7 +155,7 @@ local function registerMcm()
     template:createExclusionsPage{
         label = "Guar Equipment Merchants",
         description = "Move merchants into the left list to allow them to sell guar packs, flutes, etc. Changes won't take effect until the next time you enter the cell where the merchant is. Note that removing a merchant from the list won't remove the equipment if you have already visited the cell they are in.",
-        variable = mwse.mcm.createTableVariable{ id = "merchants", table = config },
+        variable = mwse.mcm.createTableVariable{ id = "merchants", table = mcmConfig },
         leftListLabel = "Merchants who sell guar equipment",
         rightListLabel = "Merchants",
         filters = {
@@ -198,7 +197,7 @@ local function registerMcm()
     template:createExclusionsPage{
         label = "Scripted Guars",
         description = "By default, scripted guars can not be tamed, as the script will get overridden and could cause issues. However, if you have a mod that adds scripts to vanilla guars, or you really want to tame some other scripted guar, you can add them to the whitelist here. Be careful about whitelisting guar_white_unique, as you will not be able to complete the Dreams of a White Guar quest once you have done so.",
-        variable = mwse.mcm.createTableVariable{ id = "exclusions", table = config },
+        variable = mwse.mcm.createTableVariable{ id = "exclusions", table = mcmConfig },
         leftListLabel = "Whitelist",
         rightListLabel = "Blacklist",
         filters = {
