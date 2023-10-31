@@ -21,7 +21,7 @@ local function getTentIds()
                 tents[id:lower()] = true
             end
         end
-        if ashfall.getMiscTentCoverIds() then
+        if ashfall.getMiscTentCoverIds then
             for _, id in ipairs(ashfall.getMiscTentCoverIds()) do
                 tents[id:lower()] = true
             end
