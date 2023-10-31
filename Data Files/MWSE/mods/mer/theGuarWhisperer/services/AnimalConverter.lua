@@ -71,8 +71,20 @@ function AnimalConverter.convert(reference, convertConfig)
     if reference.data.tgw then
         newRef.data.tgw = table.copy(reference.data.tgw)
     end
-    reference.data.TGW_FLAGGED_FOR_DELETE = true
+    if convertConfig.transferInventory then
+        logger:debug("Transfering existing inventory")
+        for _, stack in pairs(reference.object.inventory) do
+            tes3.transferItem{
+                from = reference,
+                to = newRef,
+                item = stack.object,
+                count = stack.count or 1,
+                playSound=false
+            }
+        end
+    end
     --Remove old ref
+    reference.data.TGW_FLAGGED_FOR_DELETE = true
     reference:delete()
 
     Animal.initialiseRefData(newRef, convertConfig.type)

@@ -149,6 +149,7 @@ function Animal.initialiseRefData(reference, animalType)
             cell = reference.cell.id
         },
     }
+
     reference.data.tgw = reference.data.tgw or {}
     table.copymissing(reference.data.tgw, newData)
     Animal.referenceManager:addReference(reference)

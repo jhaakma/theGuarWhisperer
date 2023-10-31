@@ -348,6 +348,7 @@ end
 --[[
     For guars from an old update, transfer them to new data table
 ]]
+---@param e { reference: tes3reference}
 local function convertOldGuar(e)
     if  tes3.player
         and tes3.player.data
@@ -363,6 +364,9 @@ local function convertOldGuar(e)
     local legacyConvertConfig = animalConfig.legacyGuarToConvertConfig[objectId]
     if legacyConvertConfig then
         logger:info("Converting legacy %s into new guar object", objectId)
+        ---@type GuarWhisperer.ConvertConfig
+        legacyConvertConfig = table.copy(legacyConvertConfig)
+        legacyConvertConfig.transferInventory = true
         AnimalConverter.convert(e.reference, legacyConvertConfig)
     end
 end

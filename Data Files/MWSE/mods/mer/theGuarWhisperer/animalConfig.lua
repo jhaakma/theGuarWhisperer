@@ -138,9 +138,10 @@ this.greetableGuars = {
 ---@class GuarWhisperer.ConvertConfig
 ---@field name string? The default name of hte converted guar
 ---@field mesh string? The mesh of the converted guar
----@field type string
----@field extra GuarWhisperer.ConvertConfig.extra
----@field statOverrides GuarWhisperer.ConvertConfig.statOverrides?
+---@field type string The type of the converted guar
+---@field extra GuarWhisperer.ConvertConfig.extra Extra data for the converted guar
+---@field statOverrides GuarWhisperer.ConvertConfig.statOverrides? Overrides for the converted guar's stats
+---@field transferInventory boolean? Whether to transfer inventory from the old guar to the new guar
 
 --Meshes to allow to turn into switch guar
 ---@type table<string, GuarWhisperer.ConvertConfig>
@@ -185,6 +186,7 @@ this.meshToConvertConfig = {
     ["r\\guar_white.nif"] = this.convertConfigs.whiteGuar
 }
 
+---@type table<string, GuarWhisperer.ConvertConfig>
 this.legacyGuarToConvertConfig = {
     mer_tgw_guar = this.convertConfigs.guar,
     mer_tgw_guar_w = this.convertConfigs.whiteGuar
