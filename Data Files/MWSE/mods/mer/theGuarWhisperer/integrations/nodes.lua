@@ -1,6 +1,6 @@
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("Integrations - nodes")
-local Animal = require("mer.theGuarWhisperer.Animal")
+local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local Lantern = require("mer.theGuarWhisperer.components.Lantern")
 local NodeManager = require("CraftingFramework.nodeVisuals.NodeManager")
 local SwitchNode = require("CraftingFramework.nodeVisuals.SwitchNode")
@@ -9,7 +9,7 @@ local ashfall = include("mer.ashfall.interop")
 
 ---@param reference tes3reference
 local function isPackAnimal(reference)
-    local animal = Animal.get(reference)
+    local animal = GuarCompanion.get(reference)
     return animal and animal.pack:hasPack()
 end
 
@@ -61,7 +61,7 @@ end
 ---@param item tes3item
 local function isCarryingItem(reference, item)
     local itemId = item.id:lower()
-    local animal = Animal.get(reference)
+    local animal = GuarCompanion.get(reference)
     local carriedItems = animal and animal:getCarriedItems()
     if carriedItems then
         for _, carriedItem in pairs(carriedItems) do
@@ -125,7 +125,7 @@ local attachConfigs = {
         switchId = "SWITCH_LANTERN",
         afterAttach = function(_, e, item )
             ---@cast item tes3light
-            local animal = Animal.get(e.reference)
+            local animal = GuarCompanion.get(e.reference)
             if not animal then return end
             if item ~= nil then
                 animal.lantern:detachLantern()
@@ -159,7 +159,7 @@ end
 NodeManager.register{
     id = "GuarWhisperer_PackNodes",
     referenceRequirements = function(reference)
-        return Animal.get(reference) ~= nil
+        return GuarCompanion.get(reference) ~= nil
     end,
     nodes = nodes
 }

@@ -6,7 +6,7 @@
 ---@field playerTarget tes3reference
 
 ---@class GuarWhisperer.Common
----@field activeCompanion GuarWhisperer.Animal
+---@field activeCompanion GuarWhisperer.Companion.Guar
 ---@field targetData GuarWhisperer.Common.targetData
 local common = {}
 common.config = require("mer.theGuarWhisperer.config")

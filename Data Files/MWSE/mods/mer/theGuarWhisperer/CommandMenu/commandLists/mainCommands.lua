@@ -1,9 +1,9 @@
-local Animal = require("mer.theGuarWhisperer.Animal")
+local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("mainCommands")
 local this = {}
 this.getTitle = function(e)
-    ---@type GuarWhisperer.Animal
+    ---@type GuarWhisperer.Companion.Guar
     local animal = e.activeCompanion
     return string.format("Command %s", animal:getName())
 end
@@ -17,14 +17,14 @@ this.commands = {
     end,
     description = "Attempt to charm the target, increasing their disposition.",
     command = function(e)
-        ---@type GuarWhisperer.Animal
+        ---@type GuarWhisperer.Companion.Guar
         local animal = e.activeCompanion
         if animal:attemptCommand(80, 90) then
             animal:moveToAction(e.targetData.reference, "charm")
         end
     end,
     requirements = function(e)
-        ---@type GuarWhisperer.Animal
+        ---@type GuarWhisperer.Companion.Guar
         local animal = e.activeCompanion
         if not ( e.targetData and e.targetData.reference ) then return false end
         local targetObj = e.targetData.reference.baseObject or
@@ -42,7 +42,7 @@ this.commands = {
         end,
         description = "Attacks the selected target.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(50, 80) then
                 animal:setAttackPolicy("defend")
@@ -50,7 +50,7 @@ this.commands = {
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             local targetMobile = e.targetData.reference
                 and e.targetData.reference.mobile
@@ -70,7 +70,7 @@ this.commands = {
                 end
             end
             --Target isn't another companion
-            if Animal.get(e.targetData.reference) then
+            if GuarCompanion.get(e.targetData.reference) then
                 return false
             end
             --Has prerequisites for attack command
@@ -92,14 +92,14 @@ this.commands = {
         end,
         description = "Eat the selected item or plant.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(40, 80) then
                 animal:moveToAction(e.targetData.reference, "eat")
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return animal
                 and (not animal:hasCarriedItems())
@@ -115,14 +115,14 @@ this.commands = {
         end,
         description = "Harvest the selected plant.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(50, 80) then
                 animal:moveToAction(e.targetData.reference, "harvest")
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return animal:canHarvest(e.targetData.reference)
                 and tes3.hasOwnershipAccess{ target = e.targetData.reference }
@@ -136,14 +136,14 @@ this.commands = {
         end,
         description = "Bring the selected item back to the player.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(50, 80) then
                 animal:moveToAction(e.targetData.reference, "fetch")
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return animal:canFetch(e.targetData.reference)
                 and tes3.hasOwnershipAccess{ target = e.targetData.reference }
@@ -157,14 +157,14 @@ this.commands = {
         end,
         description = "Steal the selected item and bring it back to the player. Dont get caught!",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(60, 90) then
                 animal:moveToAction(e.targetData.reference, "fetch")
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return (not animal:hasCarriedItems())
                 and animal:canFetch(e.targetData.reference)
@@ -181,7 +181,7 @@ this.commands = {
         end,
         description = "Pet your guar to increase its happiness.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             animal:pet()
         end,
@@ -197,7 +197,7 @@ this.commands = {
         end,
         description = "Feed your guar something from your inventory.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             animal.hunger:feed()
         end,
@@ -213,7 +213,7 @@ this.commands = {
         end,
         description = "Start following the player.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(50, 70) then
                 tes3.messageBox("Following")
@@ -221,7 +221,7 @@ this.commands = {
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             logger:debug("Ai state: %s", animal:getAI() )
             return (e.targetData.intersection == nil or e.targetData.reference )
@@ -237,7 +237,7 @@ this.commands = {
         end,
         description = "Move to the selected location.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(50, 70) then
                 tes3.messageBox("%s moving to location", animal:getName())
@@ -245,7 +245,7 @@ this.commands = {
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return e.targetData.intersection ~= nil
                 and (not e.targetData.reference)
@@ -260,7 +260,7 @@ this.commands = {
         end,
         description = "Wait here.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(30, 60) then
                 tes3.messageBox("Waiting")
@@ -268,7 +268,7 @@ this.commands = {
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return  (e.targetData.intersection == nil or e.targetData.reference)
                 and animal:getAI() ~= "waiting"
@@ -278,19 +278,19 @@ this.commands = {
     {
         --WANDER
         label = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return "Wander"
         end,
         description = "Wander around the area.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             tes3.messageBox("Wandering")
             animal:wander()
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return (e.targetData.intersection == nil or e.targetData.reference)
                 and animal:getAI() ~= "wandering"
@@ -303,7 +303,7 @@ this.commands = {
         end,
         description = "Positions the guar on top of the player, breaking collision and allowing you to move past it.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             timer.delayOneFrame(function()
                 if not animal:isValid() then return end
@@ -329,12 +329,12 @@ this.commands = {
         end,
         description = "Equip a backpack to enable companion share.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             animal.pack:equipPack()
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return e.inMenu and animal.pack:canEquipPack()
         end,
@@ -347,12 +347,12 @@ this.commands = {
         end,
         description = "Unequip the guar's backpack.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             animal.pack:unequipPack()
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return ( e.inMenu and animal.pack:hasPack() )
         end,
@@ -366,13 +366,13 @@ this.commands = {
         end,
         description = "Stop your guar from engaging in combat.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             animal:setAttackPolicy("passive")
             tes3.messageBox("%s will no longer engage in combat.", animal:getName())
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return ( e.inMenu and animal:getAttackPolicy() ~= "passive" )
         end
@@ -384,7 +384,7 @@ this.commands = {
         end,
         description = "Your guar will defend you in combat.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(40, 60) then
                 animal:setAttackPolicy("defend")
@@ -392,7 +392,7 @@ this.commands = {
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return ( e.inMenu and animal:getAttackPolicy() ~= "defend" )
         end
@@ -406,7 +406,7 @@ this.commands = {
         end,
         description = "Breed with another guar to make a baby guar.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(80, 90) then
                 local animal = e.activeCompanion
@@ -414,7 +414,7 @@ this.commands = {
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return e.inMenu
                 and animal.genetics:getCanConceive()
@@ -424,18 +424,18 @@ this.commands = {
     {
         --RENAME
         label = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return "Rename"
         end,
         description = "Rename your guar",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             animal:rename()
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return e.inMenu
         end,
@@ -448,12 +448,12 @@ this.commands = {
         end,
         description = "Check the health, happiness, trust and hunger of your guar.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             animal:getStatusMenu()
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return e.inMenu
         end,
@@ -463,21 +463,21 @@ this.commands = {
     {
         --GO HOME
         label = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return string.format("Go home (%s)",
                 tes3.getCell{ id = animal.refData.home.cell} )
         end,
         description = "Send your guar back to their home location.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(50, 70) then
                 animal:goHome()
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return (
                 e.inMenu and
@@ -491,7 +491,7 @@ this.commands = {
     {
         --TAKE ME HOME
         label = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return string.format("Take me home (%s: %s)",
                 tes3.getCell{ id = animal.refData.home.cell},
@@ -500,14 +500,14 @@ this.commands = {
         end,
         description = "Ride your guar back to its home location.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             if animal:attemptCommand(50, 80) then
                 animal:goHome{ takeMe = true }
             end
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return e.inMenu
                 and animal:getHome()
@@ -520,13 +520,13 @@ this.commands = {
     {
         --SET HOME
         label = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return string.format("Set home (%s)", animal.reference.cell )
         end,
         description = "Set the guar's current location as their home point.",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             animal:setHome(
                 animal.reference.position,
@@ -534,7 +534,7 @@ this.commands = {
             )
         end,
         requirements = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return ( e.inMenu and animal.needs:hasSkillReqs("follow") )
         end,
@@ -547,7 +547,7 @@ this.commands = {
         end,
         description = "Exit menu",
         command = function(e)
-            ---@type GuarWhisperer.Animal
+            ---@type GuarWhisperer.Companion.Guar
             local animal = e.activeCompanion
             return true
         end,

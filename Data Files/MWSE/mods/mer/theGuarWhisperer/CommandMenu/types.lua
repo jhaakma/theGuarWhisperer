@@ -1,7 +1,7 @@
 ---@meta
 
 ---@class GuarWhisperer.CommandEvent
----@field activeCompanion GuarWhisperer.Animal
+---@field activeCompanion GuarWhisperer.Companion.Guar
 ---@field inMenu boolean
 ---@field changePage function
 

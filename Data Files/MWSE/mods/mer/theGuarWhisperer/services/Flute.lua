@@ -1,4 +1,4 @@
-local Animal = require("mer.theGuarWhisperer.Animal")
+local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local Controls = require("mer.theGuarWhisperer.services.Controls")
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("Flute")
@@ -17,8 +17,8 @@ local function onEquipFlute(e)
             local buttons = {}
             if tes3.player.cell.isInterior ~= true then
                 logger:debug("Finding companions to summon")
-                ---@param animal GuarWhisperer.Animal
-                for _, animal in ipairs(Animal.getAll()) do
+                ---@param animal GuarWhisperer.Companion.Guar
+                for _, animal in ipairs(GuarCompanion.getAll()) do
                     local animalName = animal:getName()
                     if not animal:canBeSummoned() then
                         logger:debug("%s cannot be summoned", animalName)

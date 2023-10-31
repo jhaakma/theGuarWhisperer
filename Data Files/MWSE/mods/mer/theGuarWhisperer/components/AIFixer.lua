@@ -2,16 +2,16 @@
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("AIFixer")
 
----@class GuarWhisperer.AIFixer.Animal.refData
+---@class GuarWhisperer.AIFixer.GuarCompanion.refData
 
----@class GuarWhisperer.AIFixer.Animal : GuarWhisperer.Animal
----@field refData GuarWhisperer.AIFixer.Animal.refData
+---@class GuarWhisperer.AIFixer.GuarCompanion : GuarWhisperer.Companion.Guar
+---@field refData GuarWhisperer.AIFixer.GuarCompanion.refData
 
 ---@class GuarWhisperer.AIFixer
----@field animal  GuarWhisperer.AIFixer.Animal
+---@field animal  GuarWhisperer.AIFixer.GuarCompanion
 local AIFixer = {}
 
----@param animal  GuarWhisperer.AIFixer.Animal
+---@param animal  GuarWhisperer.AIFixer.GuarCompanion
 ---@return GuarWhisperer.AIFixer
 function AIFixer.new(animal)
     local self = setmetatable({}, { __index = AIFixer })

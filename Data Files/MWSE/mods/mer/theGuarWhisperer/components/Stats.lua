@@ -47,23 +47,23 @@ local attributeScaling = {
     },
 }
 
----@class GuarWhisperer.Stats.Animal.refData
+---@class GuarWhisperer.Stats.GuarCompanion.refData
 ---@field progress number
 ---@field level number
 
 --- The original attributes of the animal.
 ---@alias GuarWhisperer.Stats.BaseAttributes table<GuarWhisperer.Stats.AttributeName, number>
 
----@class GuarWhisperer.Stats.Animal : GuarWhisperer.Animal
----@field refData GuarWhisperer.Stats.Animal.refData
+---@class GuarWhisperer.Stats.GuarCompanion : GuarWhisperer.Companion.Guar
+---@field refData GuarWhisperer.Stats.GuarCompanion.refData
 
 --- This class manages a companion's stats,
 --- progress and leveling up.
 ---@class GuarWhisperer.Stats
----@field animal GuarWhisperer.Stats.Animal
+---@field animal GuarWhisperer.Stats.GuarCompanion
 local Stats = {}
 
----@param animal GuarWhisperer.Stats.Animal
+---@param animal GuarWhisperer.Stats.GuarCompanion
 ---@return GuarWhisperer.Stats
 function Stats.new(animal)
     local self = setmetatable({}, { __index = Stats })

@@ -47,14 +47,14 @@ this.happiness = {
 
 ---@class GuarWhisperer.Affection.Status
 ---@field id string @The id of the status
----@field pettingResult fun(animal: GuarWhisperer.Animal): string @The result of petting the animal
+---@field pettingResult fun(animal: GuarWhisperer.Companion.Guar): string @The result of petting the animal
 ---@field maxValue number @The maximum value of the status
 
 ---@type GuarWhisperer.Affection.Status[]
 this.affection = {
     {
         id = "Neglected",
-        ---@param animal GuarWhisperer.Animal
+        ---@param animal GuarWhisperer.Companion.Guar
         pettingResult = function(animal)
             return string.format(
                 "You you pat %s, but %s still looks neglected.",
@@ -65,7 +65,7 @@ this.affection = {
     },
     {
         id = "Lonely",
-        ---@param animal GuarWhisperer.Animal
+        ---@param animal GuarWhisperer.Companion.Guar
         pettingResult = function(animal)
             return string.format(
                 "%s starts to cheer up as you pat %s on the head.",
@@ -76,7 +76,7 @@ this.affection = {
     },
     {
         id = "Affectionate",
-        ---@param animal GuarWhisperer.Animal
+        ---@param animal GuarWhisperer.Companion.Guar
         pettingResult = function(animal)
             return string.format(
                 "%s purrs loudly as you give %s a scratch behind the ears.",
@@ -87,7 +87,7 @@ this.affection = {
     },
     {
         id = "Very Affectionate",
-        ---@param animal GuarWhisperer.Animal
+        ---@param animal GuarWhisperer.Companion.Guar
         pettingResult = function(animal)
             return string.format(
                 "%s snuggles you affectionately.",

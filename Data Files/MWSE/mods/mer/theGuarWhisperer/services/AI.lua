@@ -3,7 +3,7 @@
     This script handles nice-to-haves such as auto-teleporting and position fixing
 
 ]]
-local Animal = require("mer.theGuarWhisperer.Animal")
+local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("AI")
 
@@ -13,7 +13,7 @@ local RUN_STATES = {
 }
 
 event.register("simulate", function()
-    Animal.referenceManager:iterateReferences(function(_, animal)
+    GuarCompanion.referenceManager:iterateReferences(function(_, animal)
         if animal.reference.mobile and RUN_STATES[animal:getAI()] then
             animal.reference.mobile.isRunning = true
         end
@@ -23,7 +23,7 @@ end)
 --Teleport to player when going back outside
 local function checkCellChanged(e)
     if e.previousCell and e.previousCell.isInterior and not e.cell.isInterior then
-        Animal.referenceManager:iterateReferences(function(_, animal)
+        GuarCompanion.referenceManager:iterateReferences(function(_, animal)
             local doTeleport = animal:getAI() == "following"
                 and not animal:isDead()
                 and animal:distanceFrom(tes3.player) > common.config.mcm.teleportDistance
@@ -67,7 +67,7 @@ local ACTION_CONFIG = {
 
 ---@param e determineActionEventData
 event.register("determinedAction", function(e)
-    local animal = Animal.get(e.session.mobile.reference)
+    local animal = GuarCompanion.get(e.session.mobile.reference)
     if animal then
         if animal.lantern:isOn() then
             animal.lantern:turnLanternOff()
@@ -95,7 +95,7 @@ event.register("determinedAction", function(e)
 
         --Prevent attacking the player
         if target then
-            local targetingCompanion = Animal.get(target.reference)
+            local targetingCompanion = GuarCompanion.get(target.reference)
             local targetingPlayer = target.reference == tes3.player
             if targetingCompanion or targetingPlayer then
                 logger:debug("Target is %s, blocking action %s", target.reference, action.description)
@@ -141,8 +141,8 @@ event.register("spellCast", function(e)
 end)
 
 event.register("menuExit", function()
-    ---@param animal GuarWhisperer.Animal
-    Animal.referenceManager:iterateReferences(function(_, animal)
+    ---@param animal GuarWhisperer.Companion.Guar
+    GuarCompanion.referenceManager:iterateReferences(function(_, animal)
         animal.pack:setSwitch()
     end)
 end)
@@ -150,7 +150,7 @@ end)
 
 ---@param e equipEventData
 event.register("equip", function(e)
-    local animal = Animal.get(e.reference)
+    local animal = GuarCompanion.get(e.reference)
     if animal then
         logger:debug("no guar, don't equip anything please")
         return false
@@ -163,7 +163,7 @@ event.register("loaded", function()
         iterations = -1,
         type = timer.simulate,
         callback = function()
-            Animal.referenceManager:iterateReferences(function(_, animal)
+            GuarCompanion.referenceManager:iterateReferences(function(_, animal)
                 animal.aiFixer:fixSoundBug()
             end)
         end
@@ -173,7 +173,7 @@ end)
 ---@param e attackHitEventData
 event.register("attackHit", function(e)
     --progress level when guar attacks
-    local animal = Animal.get(e.mobile.reference)
+    local animal = GuarCompanion.get(e.mobile.reference)
     if animal then
         animal.stats:progressLevel(animal.animalType.lvl.attackProgress)
     end

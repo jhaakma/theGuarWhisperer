@@ -2,16 +2,16 @@ local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("Lantern")
 
 
----@class GuarWhisperer.Lantern.Animal.refData
+---@class GuarWhisperer.Lantern.GuarCompanion.refData
 ---@field lanternOn boolean Lantern is turned on
 
----@class GuarWhisperer.Lantern.Animal : GuarWhisperer.Animal
----@field refData GuarWhisperer.Lantern.Animal.refData
+---@class GuarWhisperer.Lantern.GuarCompanion : GuarWhisperer.Companion.Guar
+---@field refData GuarWhisperer.Lantern.GuarCompanion.refData
 
 --- This component is responsible for attaching
 --- lanterns to guar's and toggling them on and off.
 ---@class GuarWhisperer.Lantern
----@field animal GuarWhisperer.Lantern.Animal
+---@field animal GuarWhisperer.Lantern.GuarCompanion
 local Lantern = {
     lanternIds = {
         ["light_com_lantern_02_Off"] = true,
@@ -64,7 +64,7 @@ local Lantern = {
     }
 }
 
----@param animal GuarWhisperer.Lantern.Animal
+---@param animal GuarWhisperer.Lantern.GuarCompanion
 ---@return GuarWhisperer.Lantern
 function Lantern.new(animal)
     local self = setmetatable({}, { __index = Lantern })

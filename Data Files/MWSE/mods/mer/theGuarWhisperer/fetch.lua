@@ -1,5 +1,5 @@
 
-local Animal = require("mer.theGuarWhisperer.Animal")
+local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local common = require("mer.theGuarWhisperer.common")
 
 local function isBall(reference)
@@ -8,8 +8,8 @@ end
 
 local function guarFollow(ball)
     local validAnimals = {}
-    ---@param animal GuarWhisperer.Animal
-    Animal.referenceManager:iterateReferences(function(_, animal)
+    ---@param animal GuarWhisperer.Companion.Guar
+    GuarCompanion.referenceManager:iterateReferences(function(_, animal)
         local moving = animal:getAI() == "moving"
         local mouthEmpty = (not animal:hasCarriedItems())
         local closeToBall = animal:distanceFrom(ball) < 1000

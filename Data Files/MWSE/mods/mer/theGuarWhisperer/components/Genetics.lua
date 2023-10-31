@@ -8,22 +8,22 @@ local Controls = require("mer.theGuarWhisperer.services.Controls")
 ---|'"female"' Female
 ---|'"none"' No gender
 
----@class GuarWhisperer.Genetics.Animal.refData
+---@class GuarWhisperer.Genetics.GuarCompanion.refData
 ---@field isBaby boolean
 ---@field lastBirthed number
 ---@field birthTime number
 ---@field gender GuarWhisperer.Gender
 ---@field trust number
 
----@class GuarWhisperer.Genetics.Animal : GuarWhisperer.Animal
----@field refData GuarWhisperer.Genetics.Animal.refData
+---@class GuarWhisperer.Genetics.GuarCompanion : GuarWhisperer.Companion.Guar
+---@field refData GuarWhisperer.Genetics.GuarCompanion.refData
 
 ---This component deals with genetics and breeding
 ---@class GuarWhisperer.Genetics
----@field animal GuarWhisperer.Genetics.Animal
+---@field animal GuarWhisperer.Genetics.GuarCompanion
 local Genetics = {}
 
----@param animal GuarWhisperer.Genetics.Animal
+---@param animal GuarWhisperer.Genetics.GuarCompanion
 ---@return GuarWhisperer.Genetics
 function Genetics.new(animal)
     local self = setmetatable({}, { __index = Genetics })
@@ -61,8 +61,8 @@ end
 
 --Averages the attributes of mom and dad and adds some random mutation
 --Stores them on refData so they can be scaled down during adolescence
----@param mom GuarWhisperer.Genetics.Animal
----@param dad GuarWhisperer.Genetics.Animal
+---@param mom GuarWhisperer.Genetics.GuarCompanion
+---@param dad GuarWhisperer.Genetics.GuarCompanion
 function Genetics:inheritGenes(mom, dad)
     for _, attribute in pairs(tes3.attribute) do
         local attributeName = table.find(tes3.attribute, attribute)
@@ -145,7 +145,7 @@ function Genetics:getCanConceive()
     return true
 end
 
----@param animal GuarWhisperer.Genetics.Animal|GuarWhisperer.Animal
+---@param animal GuarWhisperer.Genetics.GuarCompanion|GuarWhisperer.Companion.Guar
 function Genetics:canBeImpregnatedBy(animal)
     if not animal.animalType.breedable then return false end
     if not (animal.refData.gender == "male" ) then return false end
@@ -161,7 +161,7 @@ end
 
 function Genetics:breed()
     --Find nearby animal
-    ---@type GuarWhisperer.Animal[]
+    ---@type GuarWhisperer.Companion.Guar[]
     local partnerList = {}
 
     self.animal.referenceManager:iterateReferences(function(_, animal)
@@ -223,7 +223,7 @@ function Genetics:breed()
         end
         local buttons = {}
         local i = 1
-        ---@param partner GuarWhisperer.Animal
+        ---@param partner GuarWhisperer.Companion.Guar
         for _, partner in ipairs(partnerList) do
             table.insert(buttons,
                 {

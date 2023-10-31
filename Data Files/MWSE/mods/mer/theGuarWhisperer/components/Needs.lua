@@ -2,7 +2,7 @@ local moodConfig = require("mer.theGuarWhisperer.moodConfig")
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("Needs")
 
----@class GuarWhisperer.Needs.Animal.refData
+---@class GuarWhisperer.Needs.GuarCompanion.refData
 ---@field hunger number
 ---@field trust number
 ---@field affection number
@@ -10,12 +10,12 @@ local logger = common.createLogger("Needs")
 ---@field happiness number
 ---@field lastUpdated number
 
----@class GuarWhisperer.Needs.Animal : GuarWhisperer.Animal
----@field refData GuarWhisperer.Needs.Animal.refData
+---@class GuarWhisperer.Needs.GuarCompanion : GuarWhisperer.Companion.Guar
+---@field refData GuarWhisperer.Needs.GuarCompanion.refData
 
 --- This class manages a companion's needs.
 ---@class GuarWhisperer.Needs
----@field animal GuarWhisperer.Needs.Animal
+---@field animal GuarWhisperer.Needs.GuarCompanion
 local Needs = {
     default = {
         trust = moodConfig.defaultTrust,
@@ -26,7 +26,7 @@ local Needs = {
     }
 }
 
----@param animal GuarWhisperer.Needs.Animal
+---@param animal GuarWhisperer.Needs.GuarCompanion
 ---@return GuarWhisperer.Needs
 function Needs.new(animal)
     local self = setmetatable({}, { __index = Needs })

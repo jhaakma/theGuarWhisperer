@@ -1,13 +1,13 @@
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("Hunger")
 
----@class GuarWhisperer.Hunger.Animal.refData
+---@class GuarWhisperer.Hunger.GuarCompanion.refData
 
----@class GuarWhisperer.Hunger.Animal : GuarWhisperer.Animal
+---@class GuarWhisperer.Hunger.GuarCompanion : GuarWhisperer.Companion.Guar
 
 ---@class GuarWhisperer.Hunger
----@field animal GuarWhisperer.Hunger.Animal
----@field refData GuarWhisperer.Hunger.Animal.refData
+---@field animal GuarWhisperer.Hunger.GuarCompanion
+---@field refData GuarWhisperer.Hunger.GuarCompanion.refData
 local Hunger = {}
 
 function Hunger.new(animal)

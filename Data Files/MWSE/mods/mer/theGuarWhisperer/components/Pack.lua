@@ -2,18 +2,18 @@ local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("Pack")
 local NodeManager = require("CraftingFramework.nodeVisuals.NodeManager")
 
----@class GuarWhisperer.Pack.Animal.refData
+---@class GuarWhisperer.Pack.GuarCompanion.refData
 ---@field hasPack boolean has a backpack equipped
 ---@field triggerDialog boolean
 
----@class GuarWhisperer.Pack.Animal : GuarWhisperer.Animal
----@field refData GuarWhisperer.Pack.Animal.refData
+---@class GuarWhisperer.Pack.GuarCompanion : GuarWhisperer.Companion.Guar
+---@field refData GuarWhisperer.Pack.GuarCompanion.refData
 
 ---@class GuarWhisperer.Pack
----@field animal GuarWhisperer.Pack.Animal
+---@field animal GuarWhisperer.Pack.GuarCompanion
 local Pack = {}
 
----@param animal GuarWhisperer.Pack.Animal
+---@param animal GuarWhisperer.Pack.GuarCompanion
 ---@return GuarWhisperer.Pack
 function Pack.new(animal)
     local self = setmetatable({}, { __index = Pack })

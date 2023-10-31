@@ -1,18 +1,18 @@
-local Animal = require("mer.theGuarWhisperer.Animal")
+local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local animalConfig = require("mer.theGuarWhisperer.animalConfig")
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.createLogger("AnimalConverter")
+local logger = common.createLogger("GuarConverter")
 
----@class GuarWhisperer.AnimalConverter.convert.params
+---@class GuarWhisperer.GuarConverter.convert.params
 ---@field reference tes3reference
 
----@class GuarWhisperer.AnimalConverter
-local AnimalConverter = {}
+---@class GuarWhisperer.GuarConverter
+local GuarConverter = {}
 
 ---Override the base object stats
 ---@param baseObject tes3creature
 ---@param convertConfig GuarWhisperer.ConvertConfig
-function AnimalConverter.overrideStats(baseObject, convertConfig)
+function GuarConverter.overrideStats(baseObject, convertConfig)
     local statOverrides = convertConfig.statOverrides
     if not statOverrides then return end
     logger:debug("Overriding stats")
@@ -40,7 +40,7 @@ end
 
 ---@param reference tes3reference
 ---@param convertConfig GuarWhisperer.ConvertConfig
-function AnimalConverter.convert(reference, convertConfig)
+function GuarConverter.convert(reference, convertConfig)
     if reference.data.TGW_FLAGGED_FOR_DELETE then return end
     logger:debug("Converting %s into type '%s'", reference.object.id, convertConfig.type)
     local newObj = common.createCreatureCopy(reference.baseObject)
@@ -48,7 +48,7 @@ function AnimalConverter.convert(reference, convertConfig)
         logger:debug("Replacing mesh with %s", convertConfig.mesh)
         newObj.mesh = convertConfig.mesh
     end
-    AnimalConverter.overrideStats(newObj, convertConfig)
+    GuarConverter.overrideStats(newObj, convertConfig)
 
     local name = reference.data.tgw and reference.data.tgw.name
         or convertConfig.name
@@ -87,9 +87,9 @@ function AnimalConverter.convert(reference, convertConfig)
     reference.data.TGW_FLAGGED_FOR_DELETE = true
     reference:delete()
 
-    Animal.initialiseRefData(newRef, convertConfig.type)
+    GuarCompanion.initialiseRefData(newRef, convertConfig.type)
     table.copymissing(newRef.data.tgw, convertConfig.extra)
-    local animal = Animal.get(newRef)
+    local animal = GuarCompanion.get(newRef)
     if not animal then
         logger:error("Failed to create animal from reference %s", newRef)
         return
@@ -107,7 +107,7 @@ end
 --- guar reference.
 ---@param reference tes3reference
 ---@return GuarWhisperer.ConvertConfig?
-function AnimalConverter.getConvertConfig(reference)
+function GuarConverter.getConvertConfig(reference)
     logger:trace("Get convert data")
     if not reference then
         logger:trace("No reference")
@@ -134,8 +134,8 @@ end
 
 ---@param convertConfig GuarWhisperer.ConvertConfig
 ---@return GuarWhisperer.AnimalType
-function AnimalConverter.getTypeFromConfig(convertConfig)
+function GuarConverter.getTypeFromConfig(convertConfig)
     return animalConfig.animals[convertConfig.type]
 end
 
-return AnimalConverter
+return GuarConverter

@@ -33,7 +33,7 @@ local function closeMenu()
     tes3ui.leaveMenuMode()
 end
 
----@param animal GuarWhisperer.Animal
+---@param animal GuarWhisperer.Companion.Guar
 local function getSubtitleText(animal)
     return string.format("Level %d %s %s",
         animal.stats:getLevel(),
@@ -42,7 +42,7 @@ local function getSubtitleText(animal)
     )
 end
 
----@param animal GuarWhisperer.Animal
+---@param animal GuarWhisperer.Companion.Guar
 local function getDescriptionText(animal)
     return string.format("%s %s. %s %s.",
         animal:getName(),
@@ -52,7 +52,7 @@ local function getDescriptionText(animal)
     )
 end
 
----@param animal GuarWhisperer.Animal
+---@param animal GuarWhisperer.Companion.Guar
 function UI.showStatusMenu(animal)
     local menu = tes3ui.createMenu{ id = UI.ids.menu, fixedFrame = true }
     menu.visible = false
@@ -156,7 +156,7 @@ function UI.createTooltip(thisHeader, thisLabel)
 end
 
 ---@param parentBlock tes3uiElement
----@param animal GuarWhisperer.Animal
+---@param animal GuarWhisperer.Companion.Guar
 ---@param inMenu boolean?
 function UI.createStatsBlock(parentBlock, animal, inMenu)
        --Right side info

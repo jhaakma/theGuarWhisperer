@@ -1,10 +1,10 @@
-local Animal = require("mer.theGuarWhisperer.Animal")
+local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 
 event.register("UIEXP:sandboxConsole", function(e)
     e.sandbox.guarWhisperer = {
-        Animal = Animal,
+        GuarCompanion = GuarCompanion,
         getCurrent = function()
-            return Animal.get(e.sandbox.currentRef)
+            return GuarCompanion.get(e.sandbox.currentRef)
         end
     }
 end)

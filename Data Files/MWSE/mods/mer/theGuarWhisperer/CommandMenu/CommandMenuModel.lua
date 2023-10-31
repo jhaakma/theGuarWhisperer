@@ -3,7 +3,7 @@
 ]]
 
 local ui = require("mer.theGuarWhisperer.CommandMenu.commandMenuView")
-local Animal = require("mer.theGuarWhisperer.Animal")
+local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("CommandMenuModel")
 
@@ -111,7 +111,7 @@ function CommandMenu:toggleCommandMenu()
     --command menu inactive, see if we're looking at a companion to turn the menu on
     else
         --playerTarget takes priority because of that stupidly large hitbox
-        local animal = Animal.get(tes3.getPlayerTarget())
+        local animal = GuarCompanion.get(tes3.getPlayerTarget())
         --otherwise do a ray cast
         if not animal then
             local ray = tes3.rayTest{
@@ -120,7 +120,7 @@ function CommandMenu:toggleCommandMenu()
                 ignore = { tes3.player },
             }
             if ray then
-                animal = Animal.get(ray.reference)
+                animal = GuarCompanion.get(ray.reference)
             end
         end
 
