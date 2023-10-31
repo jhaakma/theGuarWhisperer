@@ -191,6 +191,7 @@ function Pack:takeItemLookingAt()
     end
     logger:debug("Entering pack")
     self.animal.refData.triggerDialog = true
+    self.animal.reference.context.companion = 1
     tes3.player:activate(self.animal.reference)
 end
 
