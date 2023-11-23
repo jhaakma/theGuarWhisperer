@@ -1,5 +1,5 @@
 local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
-local animalConfig = require("mer.theGuarWhisperer.animalConfig")
+local guarConfig = require("mer.theGuarWhisperer.guarConfig")
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("GuarConverter")
 
@@ -41,7 +41,8 @@ end
 ---@param reference tes3reference
 ---@param convertConfig GuarWhisperer.ConvertConfig
 function GuarConverter.convert(reference, convertConfig)
-    if reference.data.TGW_FLAGGED_FOR_DELETE then return end
+    if reference.deleted then return end
+    if reference.disabled then return end
     logger:debug("Converting %s into type '%s'", reference.object.id, convertConfig.type)
     local newObj = common.createCreatureCopy(reference.baseObject)
     if convertConfig.mesh then
@@ -84,26 +85,25 @@ function GuarConverter.convert(reference, convertConfig)
         end
     end
     --Remove old ref
-    reference.data.TGW_FLAGGED_FOR_DELETE = true
     reference:delete()
 
     GuarCompanion.initialiseRefData(newRef, convertConfig.type)
     table.copymissing(newRef.data.tgw, convertConfig.extra)
-    local animal = GuarCompanion.get(newRef)
-    if not animal then
-        logger:error("Failed to create animal from reference %s", newRef)
+    local guar = GuarCompanion.get(newRef)
+    if not guar then
+        logger:error("Failed to create guar from reference %s", newRef)
         return
     end
-    if animal.pack:hasPack() then
-       animal.pack:setSwitch()
+    if guar.pack:hasPack() then
+       guar.pack:setSwitch()
     end
-    animal.genetics:randomiseGenes()
+    guar.genetics:randomiseGenes()
 
     logger:debug("Conversion done")
-    return animal
+    return guar
 end
 
----Get the animal type and extra data for a given vanilla
+---Get the guar type and extra data for a given vanilla
 --- guar reference.
 ---@param reference tes3reference
 ---@return GuarWhisperer.ConvertConfig?
@@ -123,7 +123,7 @@ function GuarConverter.getConvertConfig(reference)
     end
     local crMesh = reference.object.mesh:lower()
     logger:trace("Finding type for mesh %s", crMesh)
-    local typeData = animalConfig.meshToConvertConfig[crMesh]
+    local typeData = guarConfig.meshToConvertConfig[crMesh]
     if typeData then
         return typeData
     else
@@ -135,7 +135,7 @@ end
 ---@param convertConfig GuarWhisperer.ConvertConfig
 ---@return GuarWhisperer.AnimalType
 function GuarConverter.getTypeFromConfig(convertConfig)
-    return animalConfig.animals[convertConfig.type]
+    return guarConfig.animals[convertConfig.type]
 end
 
 return GuarConverter

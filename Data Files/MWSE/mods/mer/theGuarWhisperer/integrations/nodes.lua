@@ -9,8 +9,12 @@ local ashfall = include("mer.ashfall.interop")
 
 ---@param reference tes3reference
 local function isPackAnimal(reference)
-    local animal = GuarCompanion.get(reference)
-    return animal and animal.pack:hasPack()
+    local guar = GuarCompanion.get(reference)
+    return guar and guar.pack:hasPack()
+end
+
+local function isActivePackAnimal (_, e)
+    return isPackAnimal(e.reference)
 end
 
 local function getTentIds()
@@ -20,11 +24,31 @@ local function getTentIds()
             for _, id in ipairs(ashfall.getMiscTentIds()) do
                 tents[id:lower()] = true
             end
+        else
+            table.copy({
+                ashfall_tent_test_misc = true,
+                ashfall_tent_misc = true,
+                ashfall_tent_ashl_misc = true,
+                ashfall_tent_canv_b_misc = true,
+                ashfall_tent_base_m = true,
+                ashfall_tent_imp_m = true,
+                ashfall_tent_qual_m = true,
+                ashfall_tent_ashl_m = true,
+                ashfall_tent_leather_m = true,
+            }, tents)
         end
         if ashfall.getMiscTentCoverIds then
             for _, id in ipairs(ashfall.getMiscTentCoverIds()) do
                 tents[id:lower()] = true
             end
+        else
+            table.copy({
+                ashfall_cov_canv = true,
+                ashfall_cov_dark = true,
+                ashfall_cov_thatch = true,
+                ashfall_cov_common = true,
+                ashfall_cov_ashl = true,
+            }, tents)
         end
     end
     return tents
@@ -53,16 +77,13 @@ local function getWoodIds()
     end
 end
 
-local function isActivePackAnimal (_, e)
-    return isPackAnimal(e.reference)
-end
 
 ---@param reference tes3reference
 ---@param item tes3item
 local function isCarryingItem(reference, item)
     local itemId = item.id:lower()
-    local animal = GuarCompanion.get(reference)
-    local carriedItems = animal and animal:getCarriedItems()
+    local guar = GuarCompanion.get(reference)
+    local carriedItems = guar and guar.mouth:getCarriedItems()
     if carriedItems then
         for _, carriedItem in pairs(carriedItems) do
             if carriedItem.id:lower() == itemId then
@@ -125,18 +146,18 @@ local attachConfigs = {
         switchId = "SWITCH_LANTERN",
         afterAttach = function(_, e, item )
             ---@cast item tes3light
-            local animal = GuarCompanion.get(e.reference)
-            if not animal then return end
+            local guar = GuarCompanion.get(e.reference)
+            if not guar then return end
             if item ~= nil then
-                animal.lantern:detachLantern()
-                animal.lantern:attachLantern(item)
+                guar.lantern:detachLantern()
+                guar.lantern:attachLantern(item)
                 local switchNode = e.reference.sceneNode:getObjectByName("SWITCH_LANTERN")
                 local attachLightNode = switchNode:getObjectByName("ATTACH_LIGHT")
-                animal.lantern.addLight(attachLightNode, item)
+                guar.lantern.addLight(attachLightNode, item)
                 --Attach the light
-                animal.lantern:turnOnOrOff()
+                guar.lantern:turnOnOrOff()
             else
-                animal.lantern:turnLanternOff()
+                guar.lantern:turnLanternOff()
             end
         end
     }

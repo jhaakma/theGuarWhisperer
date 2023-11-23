@@ -4,18 +4,18 @@ local logger = common.createLogger("AIFixer")
 
 ---@class GuarWhisperer.AIFixer.GuarCompanion.refData
 
----@class GuarWhisperer.AIFixer.GuarCompanion : GuarWhisperer.Companion.Guar
+---@class GuarWhisperer.AIFixer.GuarCompanion : GuarWhisperer.GuarCompanion
 ---@field refData GuarWhisperer.AIFixer.GuarCompanion.refData
 
 ---@class GuarWhisperer.AIFixer
----@field animal  GuarWhisperer.AIFixer.GuarCompanion
+---@field guar  GuarWhisperer.AIFixer.GuarCompanion
 local AIFixer = {}
 
----@param animal  GuarWhisperer.AIFixer.GuarCompanion
+---@param guar  GuarWhisperer.AIFixer.GuarCompanion
 ---@return GuarWhisperer.AIFixer
-function AIFixer.new(animal)
+function AIFixer.new(guar)
     local self = setmetatable({}, { __index = AIFixer })
-    self.animal = animal
+    self.guar = guar
     return self
 end
 
@@ -25,38 +25,38 @@ end
 ---
 function AIFixer:resetFollow()
     timer.delayOneFrame(function()timer.delayOneFrame(function()
-        if not self.animal:isValid() then return end
-        if self.animal:distanceFrom(tes3.player) > 500 then
-            local lastKnownPosition = self.animal.reference.position:copy()
-            local lastKnownCell = self.animal.reference.cell
-            local lanternOn = self.animal.lantern:isOn()
+        if not self.guar:isValid() then return end
+        if self.guar:distanceFrom(tes3.player) > 500 then
+            local lastKnownPosition = self.guar.reference.position:copy()
+            local lastKnownCell = self.guar.reference.cell
+            local lanternOn = self.guar.lantern:isOn()
             if lanternOn then
                 -- Disable lantern so the player doesn't notice lighting changes
-                self.animal.lantern:turnLanternOff()
+                self.guar.lantern:turnLanternOff()
             end
             -- Make guar invisble while we sneakily move it to the player
-            self.animal.reference.sceneNode.appCulled = true
+            self.guar.reference.sceneNode.appCulled = true
             -- Teleport to the player to trigger AI Follow
             tes3.positionCell{
                 cell = tes3.player.cell,
-                orientation = self.animal.reference.orientation,
+                orientation = self.guar.reference.orientation,
                 position = tes3.player.position,
-                reference = self.animal.reference,
+                reference = self.guar.reference,
             }
             -- Wait a frame
             timer.delayOneFrame(function()
-                if not self.animal:isValid() then return end
+                if not self.guar:isValid() then return end
                 -- Then return to where it was
                 tes3.positionCell{
                     cell = lastKnownCell,
-                    orientation = self.animal.reference.orientation,
+                    orientation = self.guar.reference.orientation,
                     position = lastKnownPosition,
-                    reference = self.animal.reference,
+                    reference = self.guar.reference,
                 }
                 -- make visible and turn lights back on
-                self.animal.reference.sceneNode.appCulled = false
+                self.guar.reference.sceneNode.appCulled = false
                 if lanternOn then
-                    self.animal.lantern:turnLanternOn()
+                    self.guar.lantern:turnLanternOn()
                 end
             end)
         end
@@ -84,24 +84,24 @@ local function createContainer()
 end
 
 function AIFixer:fixSoundBug()
-    if self.animal.reference.mobile.inCombat then return end
+    if self.guar.reference.mobile.inCombat then return end
     local playingAttackSound =
-           tes3.getSoundPlaying{ sound = "SwishL", reference = self.animal.reference }
-        or tes3.getSoundPlaying{ sound = "SwishM", reference = self.animal.reference }
-        or tes3.getSoundPlaying{ sound = "SwishS", reference = self.animal.reference }
-        or tes3.getSoundPlaying{ sound = "guar roar", reference = self.animal.reference }
+           tes3.getSoundPlaying{ sound = "SwishL", reference = self.guar.reference }
+        or tes3.getSoundPlaying{ sound = "SwishM", reference = self.guar.reference }
+        or tes3.getSoundPlaying{ sound = "SwishS", reference = self.guar.reference }
+        or tes3.getSoundPlaying{ sound = "guar roar", reference = self.guar.reference }
     if playingAttackSound then
         logger:warn("AI Fix - fixing attack sound")
-        tes3.removeSound{ reference = self.animal.reference, "SwishL"}
-        tes3.removeSound{ reference = self.animal.reference, "SwishM"}
-        tes3.removeSound{ reference = self.animal.reference, "SwishS"}
-        tes3.removeSound{ reference = self.animal.reference, "guar roar"}
+        tes3.removeSound{ reference = self.guar.reference, "SwishL"}
+        tes3.removeSound{ reference = self.guar.reference, "SwishM"}
+        tes3.removeSound{ reference = self.guar.reference, "SwishS"}
+        tes3.removeSound{ reference = self.guar.reference, "guar roar"}
         local container = createContainer()
         --Transfer all lights, preserving item data, from guar to player
-        for _, stack in pairs(self.animal.object.inventory) do
+        for _, stack in pairs(self.guar.object.inventory) do
             if stack.object.objectType == tes3.objectType.light then
                 tes3.transferItem{
-                    from = self.animal.reference,
+                    from = self.guar.reference,
                     to = container,
                     item = stack.object,
                     count = stack.count,
@@ -111,12 +111,12 @@ function AIFixer:fixSoundBug()
         end
         --now transfer them all back after a frame
         timer.delayOneFrame(function()
-            if not self.animal:isValid() then return end
+            if not self.guar:isValid() then return end
             for _, stack in pairs(container.object.inventory) do
                 if stack.object.objectType == tes3.objectType.light then
                     tes3.transferItem{
                         from = container,
-                        to = self.animal.reference,
+                        to = self.guar.reference,
                         item = stack.object,
                         count = stack.count,
                         playSound = false,
@@ -125,10 +125,10 @@ function AIFixer:fixSoundBug()
             end
             container:delete()
             --toggle lights to update scene effects etc
-            if self.animal.lantern:isOn() then
+            if self.guar.lantern:isOn() then
                 logger:debug("AI Fix - Toggling lantern")
-                self.animal.lantern:turnLanternOff()
-                self.animal.lantern:turnLanternOn()
+                self.guar.lantern:turnLanternOff()
+                self.guar.lantern:turnLanternOn()
             end
         end)
     end

@@ -13,25 +13,33 @@ local RUN_STATES = {
 }
 
 event.register("simulate", function()
-    GuarCompanion.referenceManager:iterateReferences(function(_, animal)
-        if animal.reference.mobile and RUN_STATES[animal:getAI()] then
-            animal.reference.mobile.isRunning = true
+    GuarCompanion.referenceManager:iterateReferences(function(_, guar)
+        if guar.reference.mobile and RUN_STATES[guar.ai:getAI()] then
+            guar.reference.mobile.isRunning = true
         end
     end)
 end)
 
 --Teleport to player when going back outside
+---@param e cellChangedEventData
 local function checkCellChanged(e)
-    if e.previousCell and e.previousCell.isInterior and not e.cell.isInterior then
-        GuarCompanion.referenceManager:iterateReferences(function(_, animal)
-            local doTeleport = animal:getAI() == "following"
-                and not animal:isDead()
-                and animal:distanceFrom(tes3.player) > common.config.mcm.teleportDistance
+    if not e.cell.isInterior then
+        logger:debug("Cell changed to exterior, teleporting distance companions")
+        for _, guar in ipairs(GuarCompanion.getAll()) do
+            local doTeleport = guar.ai:getAI() == "following"
+                and not guar:isDead()
+                and guar:distanceFrom(tes3.player) > common.config.mcm.teleportDistance
             if doTeleport then
                 logger:debug("Cell change teleport")
-                animal:teleportToPlayer(500)
+                if e.previousCell.isInterior then
+                    --If transitioning from inside, teleport in front of player
+                    guar.ai:teleportToPlayer(500)
+                else
+                    --If transitioning from outside, trigger regular close distance teleport
+                    guar.ai:closeTheDistanceTeleport()
+                end
             end
-        end)
+        end
     end
 end
 event.register("cellChanged", checkCellChanged )
@@ -67,10 +75,10 @@ local ACTION_CONFIG = {
 
 ---@param e determineActionEventData
 event.register("determinedAction", function(e)
-    local animal = GuarCompanion.get(e.session.mobile.reference)
-    if animal then
-        if animal.lantern:isOn() then
-            animal.lantern:turnLanternOff()
+    local guar = GuarCompanion.get(e.session.mobile.reference)
+    if guar then
+        if guar.lantern:isOn() then
+            guar.lantern:turnLanternOff()
         end
 
         local action = ACTION_CONFIG[e.session.selectedAction]
@@ -82,13 +90,13 @@ event.register("determinedAction", function(e)
 
         --Block actions that might cause issues
         if not action.allowed then
-            logger:debug("%s blocking action %s - not allowed", animal:getName(), action.description)
+            logger:debug("%s blocking action %s - not allowed", guar:getName(), action.description)
             e.session.selectedAction = ACTION.undecided
         end
 
         --Flee if in combat while passive
-        if e.session.selectedAction ~= 0 and animal:getAttackPolicy() == "passive" then
-            logger:debug("%s is passive, Blocking action %s and fleeing", animal:getName(), action.description)
+        if e.session.selectedAction ~= 0 and guar:getAttackPolicy() == "passive" then
+            logger:debug("%s is passive, Blocking action %s and fleeing", guar:getName(), action.description)
             e.session.selectedAction = ACTION.flee
         end
         local target = e.session.mobile.actionData.target
@@ -101,8 +109,8 @@ event.register("determinedAction", function(e)
                 logger:debug("Target is %s, blocking action %s", target.reference, action.description)
                 e.session.selectedAction = ACTION.undecided
                 timer.delayOneFrame(function()
-                    if not animal:isValid() then return end
-                    animal.reference.mobile:stopCombat(true)
+                    if not guar:isValid() then return end
+                    guar.reference.mobile:stopCombat(true)
                 end)
             end
         end
@@ -113,21 +121,21 @@ event.register("determinedAction", function(e)
         if targetTooFar then
             logger:debug("Enemy too far away from player, returning to player")
             timer.delayOneFrame(function()
-                if not animal:isValid() then return end
+                if not guar:isValid() then return end
                 if not ( safeTarget and safeTarget:isValid()) then return end
                 if target then -- and target.actionData.aiBehaviorState == tes3.aiBehaviorState.flee then
                     logger:warn("target aiBehaviorState is %d = %s", target.actionData.aiBehaviorState, table.find(tes3.aiBehaviorState, target.actionData.aiBehaviorState))
                     logger:debug("Stopping target combat")
                     target:stopCombat(true)
                 end
-                logger:debug("Stopping %s combat", animal:getName())
-                animal.reference.mobile:stopCombat(true)
-                animal:wait()
+                logger:debug("Stopping %s combat", guar:getName())
+                guar.reference.mobile:stopCombat(true)
+                guar.ai:wait()
                 --wait to disengage, then follow
                 timer.delayOneFrame(function()
-                    if not animal:isValid() then return end
-                    animal:teleportToPlayer(100)
-                    animal:follow()
+                    if not guar:isValid() then return end
+                    guar.ai:teleportToPlayer(100)
+                    guar.ai:follow()
                 end)
             end)
         end
@@ -141,17 +149,16 @@ event.register("spellCast", function(e)
 end)
 
 event.register("menuExit", function()
-    ---@param animal GuarWhisperer.Companion.Guar
-    GuarCompanion.referenceManager:iterateReferences(function(_, animal)
-        animal.pack:setSwitch()
+    GuarCompanion.referenceManager:iterateReferences(function(_, guar)
+        guar.pack:setSwitch()
     end)
 end)
 
 
 ---@param e equipEventData
 event.register("equip", function(e)
-    local animal = GuarCompanion.get(e.reference)
-    if animal then
+    local guar = GuarCompanion.get(e.reference)
+    if guar then
         logger:debug("no guar, don't equip anything please")
         return false
     end
@@ -163,8 +170,8 @@ event.register("loaded", function()
         iterations = -1,
         type = timer.simulate,
         callback = function()
-            GuarCompanion.referenceManager:iterateReferences(function(_, animal)
-                animal.aiFixer:fixSoundBug()
+            GuarCompanion.referenceManager:iterateReferences(function(_, guar)
+                guar.aiFixer:fixSoundBug()
             end)
         end
     }
@@ -173,8 +180,8 @@ end)
 ---@param e attackHitEventData
 event.register("attackHit", function(e)
     --progress level when guar attacks
-    local animal = GuarCompanion.get(e.mobile.reference)
-    if animal then
-        animal.stats:progressLevel(animal.animalType.lvl.attackProgress)
+    local guar = GuarCompanion.get(e.mobile.reference)
+    if guar then
+        guar.stats:progressLevel(guar.animalType.lvl.attackProgress)
     end
 end)

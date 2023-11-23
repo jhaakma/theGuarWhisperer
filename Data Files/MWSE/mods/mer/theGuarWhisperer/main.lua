@@ -6,7 +6,7 @@
     This mod allows you to tame and breed guars.
 
     Author: Merlord (https://www.nexusmods.com/morrowind/users/3040468)
-    Original script from Feed the animals mod by OperatorJack and RedFurryDemon
+    Original script from Feed the guars mod by OperatorJack and RedFurryDemon
     https://www.nexusmods.com/morrowind/mods/47894
 
 ]]
@@ -16,9 +16,10 @@ require("mer.theGuarWhisperer.integrations")
 
 local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local GuarConverter = require("mer.theGuarWhisperer.services.GuarConverter")
-local commandMenu = require("mer.theGuarWhisperer.CommandMenu.CommandMenuModel")
+local commandMenu = require("mer.theGuarWhisperer.CommandMenu.CommandMenu")
 local ui = require("mer.theGuarWhisperer.ui")
-local animalConfig = require("mer.theGuarWhisperer.animalConfig")
+local guarConfig = require("mer.theGuarWhisperer.guarConfig")
+local Action = require("mer.theGuarWhisperer.abilities.Action")
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("main")
 require("mer.theGuarWhisperer.interop")
@@ -35,10 +36,10 @@ local function activateAnimal(e)
         return
     end
     --check if companion
-    local animal = GuarCompanion.get(e.target)
-    if animal then
+    local guar = GuarCompanion.get(e.target)
+    if guar then
         logger:trace("activateAnimal(): %s is a guar", e.target.object.id)
-        return animal:activate()
+        return guar:activate()
     else
         if e.target.object.script then
             local obj = e.target.baseObject or e.target.object
@@ -59,11 +60,11 @@ local function activateAnimal(e)
         end
         local convertConfig = GuarConverter.getConvertConfig(e.target)
         if not convertConfig then
-            logger:trace("activateAnimal(): Failed to get animal data for %s", e.target.object.id)
+            logger:trace("activateAnimal(): Failed to get guar data for %s", e.target.object.id)
         else
             local foodId
-            local animalType = GuarConverter.getTypeFromConfig(convertConfig)
-            for ingredient, _ in pairs(animalType.foodList) do
+            local guarType = GuarConverter.getTypeFromConfig(convertConfig)
+            for ingredient, _ in pairs(guarType.foodList) do
                 if tes3.player.object.inventory:contains(ingredient) then
                     foodId = ingredient
                     break
@@ -85,7 +86,7 @@ local function activateAnimal(e)
                                     logger:error("Failed to convert guar")
                                     return
                                 end
-                                newAnimal.hunger:eatFromInventory(food)
+                                newAnimal.mouth:eatFromInventory(food)
                                 timer.start{
                                     duration = 1.5,
                                     callback = function()
@@ -111,7 +112,7 @@ local function activateAnimal(e)
                         {
                             text = "Do nothing",
                             callback = function()
-                                local sadAnim = animalConfig.idles.sad
+                                local sadAnim = guarConfig.idles.sad
                                 tes3.playAnimation{
                                     reference = e.target,
                                     group = tes3.animationGroup[sadAnim],
@@ -145,76 +146,80 @@ end
 ---@param e uiObjectTooltipEventData
 local function onTooltip(e)
     if not common.getModEnabled() then return end
-    local animal = GuarCompanion.get(e.reference)
-    if animal then
+    local guar = GuarCompanion.get(e.reference)
+    if guar then
         --Rename
         local label = e.tooltip:findChild(tes3ui.registerID("HelpMenu_name"))
-        if animal:getName() then
-            local unNamedBaby = (animal.genetics:isBaby() and not animal:getName())
+        if guar:getName() then
+            local unNamedBaby = (guar.genetics:isBaby() and not guar:getName())
             local prefix = unNamedBaby and "Baby " or ""
-            label.text = prefix .. animal:getName()
+            label.text = prefix .. guar:getName()
         end
 
-        if isAffectedBySpellType(animal.reference.mobile, tes3.spellType.blight) then
+        if isAffectedBySpellType(guar.reference.mobile, tes3.spellType.blight) then
             label.text = label.text .. (" (Blighted)")
-        elseif isAffectedBySpellType(animal.reference.mobile, tes3.spellType.disease) then
+        elseif isAffectedBySpellType(guar.reference.mobile, tes3.spellType.disease) then
             label.text = label.text .. (" (Diseased)")
         end
 
         --Add stats
-        ui.createStatsBlock(e.tooltip, animal)
+        ui.createStatsBlock(e.tooltip, guar)
     end
 end
 
 local function guarTimer()
     if not common.getModEnabled() then return end
-    GuarCompanion.referenceManager:iterateReferences(function(_, animal)
-        if animal:isActive() then
-            animal.genetics:updateGrowth()
-            animal:updateAI()
-            animal:updateTravelSpells()
+    GuarCompanion.referenceManager:iterateReferences(function(_, guar)
+        if guar:isActive() then
+            guar.genetics:updateGrowth()
+            guar.ai:updateAI()
+            guar.ai:updateTravelSpells()
         end
-        animal.needs:updateNeeds()
-        animal:updateCloseDistance()
+        guar.needs:updateNeeds()
+        guar.ai:updateCloseDistance()
     end)
 end
 
----@param animal GuarWhisperer.Companion.Guar
-local function findFood(animal)
-    for ref in animal.reference.cell:iterateReferences(tes3.objectType.container) do
-        if animal:canEat(ref) then
-            if animal:distanceFrom(ref) < 1000 then
+---@param guar GuarWhisperer.GuarCompanion
+local function findFood(guar)
+    ---@param ref tes3reference
+    for ref in guar.reference.cell:iterateReferences(tes3.objectType.container) do
+        if guar:canEat(ref) then
+            if guar:distanceFrom(ref) < 1000 then
                 return ref
             end
         end
     end
-    for ref in animal.reference.cell:iterateReferences(tes3.objectType.ingredient) do
-        if animal:canEat(ref) then
-            if animal:distanceFrom(ref) < 1000 then
+    ---@param ref tes3reference
+    for ref in guar.reference.cell:iterateReferences(tes3.objectType.ingredient) do
+        if guar:canEat(ref) then
+            if guar:distanceFrom(ref) < 1000 then
                 return ref
             end
         end
     end
 end
 
----@param animal GuarWhisperer.Companion.Guar
-local function findGreetable(animal)
-    for ref in animal.reference.cell:iterateReferences(tes3.objectType.creature) do
+---@param guar GuarWhisperer.GuarCompanion
+local function findGreetable(guar)
+    ---@param ref tes3reference
+    for ref in guar.reference.cell:iterateReferences(tes3.objectType.creature) do
         local isHappyGuar = (
-            ref ~= animal.reference and
-            animalConfig.greetableGuars[ref.object.mesh:lower()] and
+            ref ~= guar.reference and
+            guarConfig.greetableGuars[ref.object.mesh:lower()] and
             ref.mobile and ref.mobile.health.current > 5 and
             not ref.mobile.inCombat
         )
 
         if isHappyGuar then
-            if animal:distanceFrom(ref) < 1000 then
+            if guar:distanceFrom(ref) < 1000 then
                 logger:debug("Found Guar '%s' to greet", ref.object.name)
                 return ref
             end
         end
     end
-    for ref in animal.reference.cell:iterateReferences(tes3.objectType.npc) do
+    ---@param ref tes3reference
+    for ref in guar.reference.cell:iterateReferences(tes3.objectType.npc) do
         local isHappyNPC = (
             ref.mobile and
             not ref.mobile.isDead and
@@ -222,7 +227,7 @@ local function findGreetable(animal)
             ref.mobile.fight < 70
         )
         if isHappyNPC then
-            if animal:distanceFrom(ref) < 1000 then
+            if guar:distanceFrom(ref) < 1000 then
                 logger:debug("Found NPC '%s' to greet", ref.object.name)
                 return ref
             end
@@ -230,48 +235,62 @@ local function findGreetable(animal)
     end
 end
 
-
 local lastRef
 local function randomActTimer()
     if not common.getModEnabled() then return end
     logger:debug("Random Act Timer")
     local actingRef
-    GuarCompanion.referenceManager:iterateReferences(function(_, animal)
-        if animal.mobile then
-            if animal:isActive() then
-                if animal:getAI() == "wandering" then
-                    logger:debug("%s is wandering, deciding action", animal:getName())
-                    if animal.reference.id ~= lastRef then
-                        actingRef = animal.reference.id
+    GuarCompanion.referenceManager:iterateReferences(function(_, guar)
+        if guar.mobile then
+            if guar:isActive() then
+                if guar.ai:getAI() == "wandering" then
+                    logger:debug("randomActTimer: %s is wandering, deciding action", guar:getName())
+                    if guar.reference.id ~= lastRef then
+                        actingRef = guar.reference.id
                         --check for food to eat
-                        if animal.needs:getHunger() > 40 then
-                            local food = findFood(animal)
+                        if guar.needs:getHunger() > 40 then
+                            logger:debug("randomActTimer: Hunger: %s", guar.needs:getHunger())
+                            local food = findFood(guar)
                             if food then
                                 logger:debug("randomActTimer: Guar eating")
-                                animal:moveToAction(food, "eat", true)
+                                guar.abilities.eat.command{
+                                    activeCompanion = guar,
+                                    inMenu = false,
+                                    targetData = { reference = food }
+                                }
                                 return false
                             end
                         end
                         --check for other guar
-                        local guar = findGreetable(animal)
-                        if guar then
+                        local guarRef = findGreetable(guar)
+                        if guarRef then
                             logger:debug("randomActTimer: Guar greeting")
-                            animal:moveToAction(guar, "greet", true)
+                            Action.moveToAction{
+                                guar = guar,
+                                playGroup = "idle6",
+                                target = guarRef,
+                                activationDistance = 500,
+                                actionDuration = 3,
+                                afterAction = function()
+                                    guar.needs:modPlay(guar.animalType.play.greetValue)
+                                    guar.ai:restorePreviousAI()
+                                end
+                            }
                             return false
                         end
                         if math.random(100) < 20 then
                             logger:debug("randomActTimer: Guar running")
-                            animal.reference.mobile.isRunning = true
+                            guar.reference.mobile.isRunning = true
                         end
                     end
-                elseif animal:getAI() == "waiting" then
+                elseif guar.ai:getAI() == "waiting" then
                     local rand = math.random(100)
-                    logger:debug("rand: %s", rand)
+                    logger:debug("randomActTimer: rand: %s", rand)
                     for _, data in ipairs(common.config.properties.WAITING_IDLE_CHANCES) do
                         if rand < data.maxChance then
-                            logger:debug("playing random animation %s",data.group)
+                            logger:debug("randomActTimer: playing random animation %s",data.group)
                             tes3.playAnimation{
-                                reference = animal.reference,
+                                reference = guar.reference,
                                 group = tes3.animationGroup[data.group],
                                 loopCount = 1,
                                 startFlag = tes3.animationStartFlag.normal
@@ -283,7 +302,7 @@ local function randomActTimer()
             end
         end
     end)
-    --only one guar, let him act again
+    --only one guarRef, let him act again
     if actingRef == lastRef then
         lastRef = nil
     else
@@ -293,7 +312,7 @@ local function randomActTimer()
     timer.start{
         type = timer.simulate,
         iterations = 1,
-        duration = math.random(20, 40),
+        duration = math.random(5, 10),
         callback = randomActTimer
     }
 end
@@ -314,7 +333,7 @@ local function startTimers()
 end
 
 
---Iterate over active animals
+--Iterate over active guars
 local function onDataLoaded()
     commandMenu:destroy()
     --initialiseVisuals()
@@ -331,13 +350,13 @@ local function onObjectInvalidated(e)
 end
 
 local function onDeath(e)
-    local animal = GuarCompanion.get(e.reference)
-    if animal then
-        animal.refData.dead = true
-        animal.refData.aiState = nil
-        if animal.pack:hasPack() then
+    local guar = GuarCompanion.get(e.reference)
+    if guar then
+        guar.refData.dead = true
+        guar.ai.guar.refData.aiState = nil
+        if guar.pack:hasPack() then
             tes3.addItem{
-                reference = animal.reference,
+                reference = guar.reference,
                 item = common.packId,
                 playSound = false
             }
@@ -361,7 +380,7 @@ local function convertOldGuar(e)
     end
 
     local objectId = e.reference.baseObject.id:lower()
-    local legacyConvertConfig = animalConfig.legacyGuarToConvertConfig[objectId]
+    local legacyConvertConfig = guarConfig.legacyGuarToConvertConfig[objectId]
     if legacyConvertConfig then
         logger:info("Converting legacy %s into new guar object", objectId)
         ---@type GuarWhisperer.ConvertConfig
@@ -385,7 +404,7 @@ end
 local function initialised()
     if tes3.isModActive("TheGuarWhisperer.ESP") then
         require("mer.theGuarWhisperer.services.AI")
-        require("mer.theGuarWhisperer.fetch")
+        require("mer.theGuarWhisperer.abilities.fetch")
         require("mer.theGuarWhisperer.merchant")
         require("mer.theGuarWhisperer.CommandMenu.commandMenuController")
         require("mer.theGuarWhisperer.services.Flute")
@@ -397,18 +416,22 @@ local function initialised()
         --event.register("activate", checkDoorTeleport)
         logger:info("%s Initialised", getVersion())
         event.register("loaded", function()
-            local refs = {}
-            for _, cell in ipairs(tes3.getActiveCells()) do
-                for ref in cell:iterateReferences(tes3.objectType.creature) do
-                    table.insert(refs, ref)
-                end
+            -- local refs = {}
+            -- for _, cell in ipairs(tes3.getActiveCells()) do
+            --     for ref in cell:iterateReferences(tes3.objectType.creature) do
+            --         table.insert(refs, ref)
+            --     end
+            -- end
+            -- for _, ref in ipairs(refs) do
+            --     convertOldGuar{ reference = ref }
+            -- end
+            for _, guar in ipairs(GuarCompanion.getAll()) do
+                common.addToEasyEscortBlacklist(guar.reference.baseObject)
             end
-            for _, ref in ipairs(refs) do
-                convertOldGuar{ reference = ref }
-            end
-            event.unregister("mobileActivated", convertOldGuar)
-            event.register("mobileActivated", convertOldGuar)
-        end)
+        end, { priority = 10} )
+
+        event.unregister("mobileActivated", convertOldGuar)
+        event.register("mobileActivated", convertOldGuar)
     end
 end
 event.register("initialized", initialised)

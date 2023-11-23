@@ -47,51 +47,51 @@ this.happiness = {
 
 ---@class GuarWhisperer.Affection.Status
 ---@field id string @The id of the status
----@field pettingResult fun(animal: GuarWhisperer.Companion.Guar): string @The result of petting the animal
+---@field pettingResult fun(guar: GuarWhisperer.GuarCompanion): string @The result of petting the guar
 ---@field maxValue number @The maximum value of the status
 
 ---@type GuarWhisperer.Affection.Status[]
 this.affection = {
     {
         id = "Neglected",
-        ---@param animal GuarWhisperer.Companion.Guar
-        pettingResult = function(animal)
+        ---@param guar GuarWhisperer.GuarCompanion
+        pettingResult = function(guar)
             return string.format(
                 "You you pat %s, but %s still looks neglected.",
-                animal:getName(), animal.syntax:getHeShe(true)
+                guar:getName(), guar.syntax:getHeShe(true)
             )
         end,
         maxValue = 25
     },
     {
         id = "Lonely",
-        ---@param animal GuarWhisperer.Companion.Guar
-        pettingResult = function(animal)
+        ---@param guar GuarWhisperer.GuarCompanion
+        pettingResult = function(guar)
             return string.format(
                 "%s starts to cheer up as you pat %s on the head.",
-                animal:getName(), animal.syntax:getHimHer(true)
+                guar:getName(), guar.syntax:getHimHer(true)
             )
         end,
         maxValue = 50
     },
     {
         id = "Affectionate",
-        ---@param animal GuarWhisperer.Companion.Guar
-        pettingResult = function(animal)
+        ---@param guar GuarWhisperer.GuarCompanion
+        pettingResult = function(guar)
             return string.format(
                 "%s purrs loudly as you give %s a scratch behind the ears.",
-                animal:getName(), animal.syntax:getHimHer(true)
+                guar:getName(), guar.syntax:getHimHer(true)
             )
         end,
         maxValue = 75
     },
     {
         id = "Very Affectionate",
-        ---@param animal GuarWhisperer.Companion.Guar
-        pettingResult = function(animal)
+        ---@param guar GuarWhisperer.GuarCompanion
+        pettingResult = function(guar)
             return string.format(
                 "%s snuggles you affectionately.",
-                animal:getName()
+                guar:getName()
             )
         end,
         maxValue = 100
@@ -169,12 +169,12 @@ this.hunger = {
     {
         minValue = 0,
         maxValue = 20,
-        description = "starving"
+        description = "full"
     },
     {
         minValue = 20,
         maxValue = 40,
-        description = "very hungry"
+        description = "peckish"
     },
     {
         minValue = 40,
@@ -184,12 +184,12 @@ this.hunger = {
     {
         minValue = 60,
         maxValue = 80,
-        description = "peckish"
+        description = "very hungry"
     },
     {
         minValue = 80,
         maxValue = 100,
-        description = "full"
+        description = "starving"
     },
 }
 

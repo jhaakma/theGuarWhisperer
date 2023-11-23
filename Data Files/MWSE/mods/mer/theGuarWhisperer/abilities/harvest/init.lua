@@ -1,4 +1,5 @@
 
+
 --[[
  Code taken from:
 Graphic Herbalism
@@ -6,24 +7,55 @@ By Greatness7
 
 modified by Merlord
 --]]
+local common = require("mer.theGuarWhisperer.common")
+local logger = common.createLogger("Harvest")
 
-local this = {}
-
+---@class GuarWhisperer.Harvest
+local Harvest = {}
 
 local config = include("graphicHerbalism.config") or {
     whitelist = {},
     blacklist = {}
 }
 
+
+function Harvest.canHarvest(reference)
+    return reference
+        and not reference.isEmpty
+        and Harvest.isHerb(reference)
+end
+
 -- Detect if the reference is a valid herbalism subject.
-function this.isHerb(ref)
-    if ref and ref.object.organic then
-        local id = ref.baseObject.id:lower()
-        if config.blacklist[id] then return false end
-        if config.whitelist[id] then return true end
-        return (ref.object.script == nil)
+function Harvest.isHerb(ref)
+    if not ref then
+        logger:debug("isHerb: ref is nil")
+        return false
     end
-    return false
+
+    if not ref.object.organic then
+        logger:debug("isHerb: ref is not organic")
+        return false
+    end
+
+    local id = ref.baseObject.id:lower()
+
+    if config.blacklist[id] then
+        logger:debug("isHerb: ref is blacklisted")
+        return false
+    end
+
+    if config.whitelist[id] then
+        logger:debug("isHerb: ref is whitelisted, is a herb")
+        return true
+    end
+
+    if ref.object.script then
+        logger:debug("isHerb: ref has a script")
+        return false
+    end
+
+    logger:debug("isHerb: ref is a herb")
+    return true
 end
 
 
@@ -49,7 +81,7 @@ end
 -- Calls "updateHerbalismSwitch" on appropriate references.
 local function updateHerbReferences(cell)
     for ref in cell:iterateReferences(tes3.objectType.container) do
-        if this.isHerb(ref) then
+        if Harvest.isHerb(ref) then
             if not ref.isEmpty then
                 updateHerbalismSwitch(ref, 0)
             else -- either picked or spoiled
@@ -70,6 +102,7 @@ local function onCellChanged()
         local day = currentCells[cell]
         if today > (day or 0) then
             updateHerbReferences(cell)
+            ---@diagnostic disable-next-line
             cells[cell] = today
         else -- cell is already loaded
             cells[cell] = day
@@ -84,13 +117,24 @@ event.register("loaded", function() currentCells = {}; onCellChanged() end)
 
 
 -- Called when activating a herb, loot all contents and update switch node.
-function this.harvest(reference, target)
+function Harvest.harvest(reference, target, playSound)
+    logger:debug("harvest: %s", reference.object.id)
+
+    if playSound == nil then
+        playSound = true
+    end
 
     -- skip non-ingred
-    if not this.isHerb(target) then return end
+    if not Harvest.isHerb(target) then
+        logger:debug("harvest: Not a herb")
+        return
+    end
 
     -- skip pre-picked
-    if target.data.GH then return false end
+    if target.data.GH then
+        logger:debug("harvest: Already picked")
+        return false
+    end
 
     -- resolve contents
     target:clone()
@@ -115,7 +159,9 @@ function this.harvest(reference, target)
                 table.insert(itemsTaken, { name = stack.object.name, id = stack.object.id, count = count })
             end
         end
-        tes3.playSound{reference=target, sound="Item Ingredient Up", volume=config.volume, pitch=1.0}
+        if playSound then
+            tes3.playSound{reference=target, sound="Item Ingredient Up", volume=config.volume, pitch=1.0}
+        end
         updateHerbalismSwitch(target, 1)
     end
 
@@ -129,7 +175,7 @@ function this.harvest(reference, target)
     target.object:onInventoryClose(target)
     target.isEmpty = true
 
-    -- claim this event
+    -- claim Harvest event
     return itemsTaken
 end
 
@@ -153,6 +199,7 @@ end
 -- Autodetect blacklist candidates. Not perfect, but is better than nothing.
 local function updateBlacklist()
     for obj in tes3.iterateObjects(tes3.objectType.container) do
+        ---@cast obj any
         local id = obj.id:lower()
         if (obj.organic
             and obj.script == nil
@@ -179,4 +226,5 @@ local function updateBlacklist()
 end
 event.register("initialized", updateBlacklist)
 
-return this
+return Harvest
+

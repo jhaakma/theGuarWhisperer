@@ -3,7 +3,7 @@
 ]]
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("CommandMenuController")
-local commandMenu = require("mer.theGuarWhisperer.CommandMenu.CommandMenuModel")
+local commandMenu = require("mer.theGuarWhisperer.CommandMenu.CommandMenu")
 
 --check if activate key is down
 local function didPressActivate()
@@ -21,6 +21,7 @@ local function didPressToggleKey(e)
         and not not e.isAltDown == not not toggleKey.isAltDown
 end
 
+--Check if modifier is pressed
 local function hasModifierPressed()
     local inputController = tes3.worldController.inputController
     local pressedModifier = inputController:isKeyDown(tes3.scanCode.lShift)
@@ -29,7 +30,8 @@ local function hasModifierPressed()
 end
 
 
-local function onKeyPress(e)
+---@param e keyDownEventData
+event.register("keyDown", function(e)
     if tes3.menuMode() then
         return
     end
@@ -49,12 +51,11 @@ local function onKeyPress(e)
             return commandMenu:toggleCommandMenu()
         end
     end
-end
-event.register("keyDown", onKeyPress)
+end)
 
-
-
-local function onMouseWheelChanged(e)
+---Scroll through command options
+---@param e mouseWheelEventData
+event.register("mouseWheel", function(e)
     if not common.data then return end
     if tes3ui.menuMode() then return end
     if commandMenu.activeCompanion then
@@ -64,23 +65,22 @@ local function onMouseWheelChanged(e)
             commandMenu:scrollDown()
         end
     end
-end
-event.register("mouseWheel", onMouseWheelChanged)
+end)
 
-local function activateMenu(e)
+---Open the command menu
+---@param e { guar: GuarWhisperer.GuarCompanion}
+event.register("TheGuarWhisperer:showCommandMenu", function(e)
     logger:debug("activating menu")
     if hasModifierPressed() then
-        e.animal.pack:takeItemLookingAt()
+        e.guar.pack:takeItemLookingAt()
     else
-        commandMenu:showCommandMenu(e.animal)
+        commandMenu:showCommandMenu(e.guar)
     end
-end
-event.register("TheGuarWhisperer:showCommandMenu", activateMenu)
+end)
 
 --Allow exiting of command menu
-local function onMouseButtonDown(e)
+event.register("mouseButtonDown", function(e)
     if e.button == tes3.worldController.inputController.inputMaps[19].code then
         commandMenu:destroy()
     end
-end
-event.register("mouseButtonDown", onMouseButtonDown)
+end)

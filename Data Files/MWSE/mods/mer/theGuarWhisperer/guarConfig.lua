@@ -63,7 +63,7 @@ this.animals = {
             attackProgress = 1
         },
         hunger = {
-            changePerHour = -1.0,
+            changePerHour = 1.0,
         },
         play = {
             changePerHour = -0.5,

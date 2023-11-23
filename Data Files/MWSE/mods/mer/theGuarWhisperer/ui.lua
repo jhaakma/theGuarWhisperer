@@ -33,27 +33,27 @@ local function closeMenu()
     tes3ui.leaveMenuMode()
 end
 
----@param animal GuarWhisperer.Companion.Guar
-local function getSubtitleText(animal)
+---@param guar GuarWhisperer.GuarCompanion
+local function getSubtitleText(guar)
     return string.format("Level %d %s %s",
-        animal.stats:getLevel(),
-        animal.genetics:getGender(),
-        animal.genetics:isBaby() and "(baby)" or ""
+        guar.stats:getLevel(),
+        guar.genetics:getGender(),
+        guar.genetics:isBaby() and "(baby)" or ""
     )
 end
 
----@param animal GuarWhisperer.Companion.Guar
-local function getDescriptionText(animal)
+---@param guar GuarWhisperer.GuarCompanion
+local function getDescriptionText(guar)
     return string.format("%s %s. %s %s.",
-        animal:getName(),
-        animal.needs:getHappinessStatus().description,
-        animal.syntax:getHeShe(),
-        animal.needs:getTrustStatus().description
+        guar:getName(),
+        guar.needs:getHappinessStatus().description,
+        guar.syntax:getHeShe(),
+        guar.needs:getTrustStatus().description
     )
 end
 
----@param animal GuarWhisperer.Companion.Guar
-function UI.showStatusMenu(animal)
+---@param guar GuarWhisperer.GuarCompanion
+function UI.showStatusMenu(guar)
     local menu = tes3ui.createMenu{ id = UI.ids.menu, fixedFrame = true }
     menu.visible = false
     menu.autoWidth = true
@@ -75,20 +75,20 @@ function UI.showStatusMenu(animal)
             titleBlock.paddingBottom = UI.padding
             titleBlock.flowDirection = "top_to_bottom"
 
-            local titleText = animal:getName()
+            local titleText = guar:getName()
             local title = titleBlock:createLabel{ id = UI.ids.title, text = titleText }
             do
                 title.absolutePosAlignX = 0.5
                 title.color = tes3ui.getPalette("header_color")
             end
 
-            local subtitleText = getSubtitleText(animal)
+            local subtitleText = getSubtitleText(guar)
             do
                 local subtitle = titleBlock:createLabel{ id = UI.ids.subtitle, text = subtitleText}
                 subtitle.absolutePosAlignX = 0.5
             end
 
-            local descriptionText = getDescriptionText(animal)
+            local descriptionText = getDescriptionText(guar)
             local description = outerBlock:createLabel{text = descriptionText}
             description.wrapText = true
             description.justifyText = "center"
@@ -96,7 +96,7 @@ function UI.showStatusMenu(animal)
             description.maxWidth = 200
         end
 
-        UI.createStatsBlock(outerBlock, animal, true)
+        UI.createStatsBlock(outerBlock, guar, true)
 
 
     --Bottom Block close button
@@ -156,9 +156,9 @@ function UI.createTooltip(thisHeader, thisLabel)
 end
 
 ---@param parentBlock tes3uiElement
----@param animal GuarWhisperer.Companion.Guar
+---@param guar GuarWhisperer.GuarCompanion
 ---@param inMenu boolean?
-function UI.createStatsBlock(parentBlock, animal, inMenu)
+function UI.createStatsBlock(parentBlock, guar, inMenu)
        --Right side info
        local infoBlock = parentBlock:createBlock{ id = UI.ids.infoBlock }
        infoBlock.autoHeight = true
@@ -171,14 +171,14 @@ function UI.createStatsBlock(parentBlock, animal, inMenu)
             {
                 label = "Health",
                 description = "Feed your guar to restore its health.",
-                current = animal.mobile.health.current,
-                max = animal.mobile.health.base,
+                current = guar.mobile.health.current,
+                max = guar.mobile.health.base,
                 color = { 1, 0, 0 }
             },
             {
                 label = "Happiness",
                 description = "A guar's happiness is determined by all other factors. Keep your guar well fed, pet it and play fetch occasionally. Happiness determines how quickly your guar will trust you.",
-                current = animal.needs:getHappiness(),
+                current = guar.needs:getHappiness(),
                 max = 100,
                 color =  { 0.1, 0.9, 0.1}
             },
@@ -186,14 +186,14 @@ function UI.createStatsBlock(parentBlock, animal, inMenu)
             {
                 label = "Trust",
                 description = "Built trust by spending time with a happy guar. The more your guar trusts you, the more commands you can give it.",
-                current = animal.needs:getTrust(),
+                current = guar.needs:getTrust(),
                 max = 100,
                 color = { 0.2, 0.1, 0.8 }
             },
             {
                 label = "Hunger",
                 description = "Guars love leafy greens. Keep your guar well feed to make them happy and healthy. Guars can eat from your hand, or you can command them to eat directly from a plant.",
-                current = 100 - animal.needs:getHunger(),
+                current = guar.needs:getHunger(),
                 max = 100,
                 color = { 0.1, 0.5, 0.5 }
             }
@@ -235,7 +235,7 @@ function UI.createStatsBlock(parentBlock, animal, inMenu)
             attrBlock.autoHeight = true
 
             attrBlock:createLabel{ text = Syntax.capitaliseFirst(attrName) }
-            local value = tostring(animal.mobile.attributes[attribute + 1].current)
+            local value = tostring(guar.mobile.attributes[attribute + 1].current)
             local valueLabel =attrBlock:createLabel{ text = value }
             valueLabel.absolutePosAlignX = 1.0
         end

@@ -6,7 +6,6 @@ local this = {}
 local commandMenuId = tes3ui.registerID("Commander_Tooltip")
 local commonUI = require("mer.theGuarWhisperer.ui")
 
-
 local function createCommandContainer(cMenu, parentBlock)
     local outerBlock = parentBlock:createBlock({})
     outerBlock.autoHeight = true
@@ -16,7 +15,7 @@ local function createCommandContainer(cMenu, parentBlock)
     outerBlock.childAlignX = 0.5
 
     --Title
-    local titleText = cMenu.currentPage.getTitle(cMenu)
+    local titleText = string.format("Command %s", cMenu.activeCompanion:getName())
     local title = outerBlock:createLabel{ text = titleText }
     title.color = tes3ui.getPalette("header_color")
 

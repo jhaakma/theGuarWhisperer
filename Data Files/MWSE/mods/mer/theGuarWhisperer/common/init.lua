@@ -6,13 +6,14 @@
 ---@field playerTarget tes3reference
 
 ---@class GuarWhisperer.Common
----@field activeCompanion GuarWhisperer.Companion.Guar
+---@field activeCompanion GuarWhisperer.GuarCompanion
 ---@field targetData GuarWhisperer.Common.targetData
 local common = {}
 common.config = require("mer.theGuarWhisperer.config")
 common.util = require("mer.theGuarWhisperer.common.Util")
 
 ---TODO: access with getters, move to player.tempData
+---This holds a list of references guars are currently taking an action towards
 common.fetchItems = {}
 
 ---@type table<string, mwseLogger>
@@ -81,19 +82,34 @@ local function onLoadInitialiseRefs(e)
 end
 event.register("loaded", onLoadInitialiseRefs)
 
+function common.addToEasyEscortBlacklist(obj)
+    local easyEscort = include("Easy Escort.interop")
+    if easyEscort then
+        logger:info("Adding %s to Easy Escort blacklist", obj.id)
+        easyEscort.addToBlacklist(obj.id)
+    end
+end
+
 ---@param obj tes3creature
 ---@return tes3creature
 function common.createCreatureCopy(obj)
     local newObj = obj:createCopy{}
     newObj.persistent = true
     newObj.modified = true
-    local easyEscort = include("Easy Escort.interop")
-    if easyEscort then
-        logger:info("Adding %s to Easy Escort blacklist", newObj.id)
-        easyEscort.addToBlacklist(newObj.id)
-    end
+    common.addToEasyEscortBlacklist(newObj)
     return newObj
 end
 
+local function isLuaFile(file) return file:sub(-4, -1) == ".lua" end
+local function isInitFile(file) return file == "init.lua" end
+--Execute all lua files in the given directory
+function common.initAll(path)
+    for file in lfs.dir(path) do
+        if isLuaFile(file) and not isInitFile(file) then
+            logger:debug("Executing file: %s", file)
+            dofile(path .. file)
+        end
+    end
+end
 
 return common

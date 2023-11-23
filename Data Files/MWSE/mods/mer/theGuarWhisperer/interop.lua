@@ -1,8 +1,8 @@
 local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local function eat(e)
-    local animal = GuarCompanion.get(e.reference)
-    if animal then
-        animal.needs:modHunger(e.amount)
+    local guar = GuarCompanion.get(e.reference)
+    if guar then
+        guar.needs:modHunger(-e.amount)
     end
 end
 

@@ -17,10 +17,10 @@ local function onEquipFlute(e)
             local buttons = {}
             if tes3.player.cell.isInterior ~= true then
                 logger:debug("Finding companions to summon")
-                ---@param animal GuarWhisperer.Companion.Guar
-                for _, animal in ipairs(GuarCompanion.getAll()) do
-                    local animalName = animal:getName()
-                    if not animal:canBeSummoned() then
+                ---@param guar GuarWhisperer.GuarCompanion
+                for _, guar in ipairs(GuarCompanion.getAll()) do
+                    local animalName = guar:getName()
+                    if not guar:canBeSummoned() then
                         logger:debug("%s cannot be summoned", animalName)
                     else
                         logger:debug("%s can be summoned, adding to list", animalName)
@@ -28,19 +28,19 @@ local function onEquipFlute(e)
                             text = animalName,
                             callback = function()
                                 timer.delayOneFrame(function()
-                                    if not animal:isValid() then return end
+                                    if not guar:isValid() then return end
                                     tes3.playSound{ reference = tes3.player, sound = common.fluteSound, }
-                                    animal:wait()
+                                    guar.ai:wait()
                                     timer.start{
                                         duration = 1,
                                         callback = function()
-                                            if animal:isValid() then animal:teleportToPlayer(400) end
+                                            if guar:isValid() then guar.ai:teleportToPlayer(400) end
                                         end
                                     }
                                     Controls.fadeTimeOut( 0, 2, function()
-                                        if animal:isValid() then
-                                            animal:playAnimation("pet")
-                                            animal:follow()
+                                        if guar:isValid() then
+                                            guar.ai:playAnimation("pet")
+                                            guar.ai:follow()
                                         end
                                     end)
                                 end)

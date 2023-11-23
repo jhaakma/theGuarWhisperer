@@ -1,4 +1,3 @@
-
 local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local common = require("mer.theGuarWhisperer.common")
 
@@ -8,14 +7,13 @@ end
 
 local function guarFollow(ball)
     local validAnimals = {}
-    ---@param animal GuarWhisperer.Companion.Guar
-    GuarCompanion.referenceManager:iterateReferences(function(_, animal)
-        local moving = animal:getAI() == "moving"
-        local mouthEmpty = (not animal:hasCarriedItems())
-        local closeToBall = animal:distanceFrom(ball) < 1000
-        local closeToPlayer = animal:distanceFrom(tes3.player) < 500
+    GuarCompanion.referenceManager:iterateReferences(function(_, guar)
+        local moving = guar.ai:getAI() == "moving"
+        local mouthEmpty = (not guar.mouth:hasCarriedItems())
+        local closeToBall = guar:distanceFrom(ball) < 1000
+        local closeToPlayer = guar:distanceFrom(tes3.player) < 500
         if mouthEmpty and (closeToBall or closeToPlayer) and (not moving) then
-            table.insert(validAnimals, animal)
+            table.insert(validAnimals, guar)
         end
     end)
     if #validAnimals == 0 then return end

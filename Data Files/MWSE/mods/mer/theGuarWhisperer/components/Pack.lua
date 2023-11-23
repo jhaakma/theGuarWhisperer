@@ -6,18 +6,18 @@ local NodeManager = require("CraftingFramework.nodeVisuals.NodeManager")
 ---@field hasPack boolean has a backpack equipped
 ---@field triggerDialog boolean
 
----@class GuarWhisperer.Pack.GuarCompanion : GuarWhisperer.Companion.Guar
+---@class GuarWhisperer.Pack.GuarCompanion : GuarWhisperer.GuarCompanion
 ---@field refData GuarWhisperer.Pack.GuarCompanion.refData
 
 ---@class GuarWhisperer.Pack
----@field animal GuarWhisperer.Pack.GuarCompanion
+---@field guar GuarWhisperer.Pack.GuarCompanion
 local Pack = {}
 
----@param animal GuarWhisperer.Pack.GuarCompanion
+---@param guar GuarWhisperer.Pack.GuarCompanion
 ---@return GuarWhisperer.Pack
-function Pack.new(animal)
+function Pack.new(guar)
     local self = setmetatable({}, { __index = Pack })
-    self.animal = animal
+    self.guar = guar
     return self
 end
 
@@ -27,34 +27,34 @@ function Pack:hasPackItem(packItem)
         return true
     end
     for _, item in ipairs(packItem.items) do
-        if self.animal.object.inventory:contains(item) then
+        if self.guar.object.inventory:contains(item) then
             return true
         end
     end
 end
 
 function Pack:equipPack()
-    if not self.animal.reference.context or not self.animal.reference.context.Companion then
+    if not self.guar.reference.context or not self.guar.reference.context.Companion then
         logger:error("[Guar Whisperer] Attempting to give pack to guar with no Companion var")
     end
-    self.animal.reference.context.companion = 1
+    self.guar.reference.context.companion = 1
     tes3.removeItem{
         reference = tes3.player,
         item = common.packId,
         playSound = true
     }
-    self.animal.refData.hasPack = true
+    self.guar.refData.hasPack = true
     self:setSwitch()
-    NodeManager.registeredNodeManagers["GuarWhisperer_PackNodes"]:processReference(self.animal.reference)
+    NodeManager.registeredNodeManagers["GuarWhisperer_PackNodes"]:processReference(self.guar.reference)
 end
 
 function Pack:unequipPack()
-    if self.animal.reference.context and self.animal.reference.context.Companion then
-        self.animal.reference.context.companion = 0
+    if self.guar.reference.context and self.guar.reference.context.Companion then
+        self.guar.reference.context.companion = 0
     end
-    for _, stack in pairs(self.animal.object.inventory) do
+    for _, stack in pairs(self.guar.object.inventory) do
         tes3.transferItem{
-            from = self.animal.reference,
+            from = self.guar.reference,
             to = tes3.player,
             item = stack.object,
             count = stack.count or 1,
@@ -66,26 +66,26 @@ function Pack:unequipPack()
         item = common.packId,
         playSound = true
     }
-    self.animal.refData.hasPack = false
+    self.guar.refData.hasPack = false
     self:setSwitch()
-    NodeManager.registeredNodeManagers["GuarWhisperer_PackNodes"]:processReference(self.animal.reference)
+    NodeManager.registeredNodeManagers["GuarWhisperer_PackNodes"]:processReference(self.guar.reference)
 end
 
 function Pack:canEquipPack()
-    return self.animal.refData.hasPack ~= true
+    return self.guar.refData.hasPack ~= true
         and tes3.player.object.inventory:contains(common.packId)
-        and self.animal.needs:hasSkillReqs("pack")
+        and self.guar.needs:hasSkillReqs("pack")
 end
 
 function Pack:hasPack()
-    return self.animal.refData.hasPack == true
+    return self.guar.refData.hasPack == true
 end
 
 function Pack:setSwitch()
     logger:debug("Setting switch")
-    if not self.animal.reference.sceneNode then return end
-    if not self.animal.reference.mobile then return end
-    NodeManager.registeredNodeManagers["GuarWhisperer_PackNodes"]:processReference(self.animal.reference)
+    if not self.guar.reference.sceneNode then return end
+    if not self.guar.reference.mobile then return end
+    NodeManager.registeredNodeManagers["GuarWhisperer_PackNodes"]:processReference(self.guar.reference)
 end
 
 local function findNamedParentNode(node, name)
@@ -103,8 +103,8 @@ end
 
 
 function Pack:grabItem(nodeConfig)
-    for itemId in pairs(nodeConfig:getItems(self.animal.reference)) do
-        local inventory = self.animal.object.inventory
+    for itemId in pairs(nodeConfig:getItems(self.guar.reference)) do
+        local inventory = self.guar.object.inventory
         if inventory:contains(itemId) then
             logger:debug("Found %s in inventory", itemId)
             for _, stack in pairs(inventory) do
@@ -118,7 +118,7 @@ function Pack:grabItem(nodeConfig)
                     logger:debug("Item transferred successfully")
                     tes3.messageBox("Retrieved %s from pack.", stack.object.name)
                     tes3.transferItem{
-                        from = self.animal.reference,
+                        from = self.guar.reference,
                         to = tes3.player,
                         item = stack.object.id,
                         itemData = itemData,
@@ -157,10 +157,10 @@ function Pack:takeItemLookingAt()
                         local node = result.object
                         local hitNode = findNamedParentNode(node, nodeConfig.id)
 
-                        --Block if node is on the other side of the animal
+                        --Block if node is on the other side of the guar
                         if hitNode then
                             local distanceToIntersection = result.intersection:distance(eyePos)
-                            local distanceToGuar = self.animal.reference.position:distance(eyePos)
+                            local distanceToGuar = self.guar.reference.position:distance(eyePos)
                             if distanceToIntersection > distanceToGuar then
                                 hitNode = false
                             end
@@ -171,10 +171,10 @@ function Pack:takeItemLookingAt()
                         else
                             --if its a lantern, toggle instead of taking
                             if nodeConfig.id == "ATTACH_LANTERN" then
-                                if self.animal.lantern:isOn() then
-                                    self.animal.lantern:turnLanternOff{ playSound = true }
+                                if self.guar.lantern:isOn() then
+                                    self.guar.lantern:turnLanternOff{ playSound = true }
                                 else
-                                    self.animal.lantern:turnLanternOn{ playSound = true }
+                                    self.guar.lantern:turnLanternOn{ playSound = true }
                                 end
                                 return
                             else
@@ -190,9 +190,9 @@ function Pack:takeItemLookingAt()
         end
     end
     logger:debug("Entering pack")
-    self.animal.refData.triggerDialog = true
-    self.animal.reference.context.companion = 1
-    tes3.player:activate(self.animal.reference)
+    self.guar.refData.triggerDialog = true
+    self.guar.reference.context.companion = 1
+    tes3.player:activate(self.guar.reference)
 end
 
 return Pack

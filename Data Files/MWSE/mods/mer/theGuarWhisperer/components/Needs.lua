@@ -10,12 +10,12 @@ local logger = common.createLogger("Needs")
 ---@field happiness number
 ---@field lastUpdated number
 
----@class GuarWhisperer.Needs.GuarCompanion : GuarWhisperer.Companion.Guar
+---@class GuarWhisperer.Needs.GuarCompanion : GuarWhisperer.GuarCompanion
 ---@field refData GuarWhisperer.Needs.GuarCompanion.refData
 
 --- This class manages a companion's needs.
 ---@class GuarWhisperer.Needs
----@field animal GuarWhisperer.Needs.GuarCompanion
+---@field guar GuarWhisperer.Needs.GuarCompanion
 local Needs = {
     default = {
         trust = moodConfig.defaultTrust,
@@ -26,11 +26,11 @@ local Needs = {
     }
 }
 
----@param animal GuarWhisperer.Needs.GuarCompanion
+---@param guar GuarWhisperer.Needs.GuarCompanion
 ---@return GuarWhisperer.Needs
-function Needs.new(animal)
+function Needs.new(guar)
     local self = setmetatable({}, { __index = Needs })
-    self.animal = animal
+    self.guar = guar
     return self
 end
 
@@ -40,12 +40,12 @@ end
 
 ---@return number
 function Needs:getHunger()
-    return self.animal.refData.hunger or Needs.default.hunger
+    return self.guar.refData.hunger or Needs.default.hunger
 end
 
 ---@param hunger number
 function Needs:setHunger(hunger)
-    self.animal.refData.hunger = hunger
+    self.guar.refData.hunger = hunger
 end
 
 ---@return GuarWhisperer.Hunger.Status
@@ -60,13 +60,13 @@ function Needs:modHunger(amount)
     self:setHunger(math.clamp(self:getHunger() + amount, 0, 100))
     local newMood = self:getMood("hunger")
     if newMood ~= previousMood then
-        tes3.messageBox("%s is %s.", self.animal:getName(), newMood.description)
+        tes3.messageBox("%s is %s.", self.guar:getName(), newMood.description)
     end
     tes3ui.refreshTooltip()
 end
 
 function Needs:updateHunger(timeSinceUpdate)
-    local changeAmount = self.animal.animalType.hunger.changePerHour * timeSinceUpdate
+    local changeAmount = self.guar.animalType.hunger.changePerHour * timeSinceUpdate
     self:modHunger(changeAmount)
 end
 
@@ -76,12 +76,12 @@ end
 
 ---@return number
 function Needs:getTrust()
-    return self.animal.refData.trust or Needs.default.trust
+    return self.guar.refData.trust or Needs.default.trust
 end
 
 ---@param trust number
 function Needs:setTrust(trust)
-    self.animal.refData.trust = trust
+    self.guar.refData.trust = trust
 end
 
 ---@return GuarWhisperer.Trust.Status
@@ -93,15 +93,15 @@ function Needs:modTrust(amount)
     local previousTrust = self:getTrust()
     self:setTrust(math.clamp(previousTrust+ amount, 0, 100))
     local afterTrust = self:getTrust()
-    self.animal.reference.mobile.fight = 50 - (self:getTrust() / 2 )
+    self.guar.reference.mobile.fight = 50 - (self:getTrust() / 2 )
 
     for _, trustData in ipairs(moodConfig.trust) do
         if previousTrust < trustData.minValue and afterTrust > trustData.minValue then
             local message = string.format("%s %s. ",
-                self.animal:getName(), trustData.description)
+                self.guar:getName(), trustData.description)
             if trustData.skillDescription then
                 message = message .. string.format("%s %s",
-                    self.animal.syntax:getHeShe(), trustData.skillDescription)
+                    self.guar.syntax:getHeShe(), trustData.skillDescription)
             end
             timer.delayOneFrame(function()
                 tes3.messageBox{ message = message, buttons = {"Okay"} }
@@ -121,7 +121,7 @@ function Needs:updateTrust(timeSinceUpdate)
     --Trust changes if nearby
     local happinessMulti = math.remap(self:getHappiness(), 0, 100, -1.0, 1.0)
     local trustChangeAmount = (
-        self.animal.animalType.trust.changePerHour *
+        self.guar.animalType.trust.changePerHour *
         happinessMulti *
         timeSinceUpdate
     )
@@ -136,12 +136,12 @@ end
 
 ---@return number
 function Needs:getAffection()
-    return self.animal.refData.affection or Needs.default.affection
+    return self.guar.refData.affection or Needs.default.affection
 end
 
 ---@param affection number
 function Needs:setAffection(affection)
-    self.animal.refData.affection = affection
+    self.guar.refData.affection = affection
 end
 
 ---@return GuarWhisperer.Affection.Status
@@ -152,7 +152,7 @@ end
 function Needs:modAffection(amount)
     --As he gains affection, his fight level decreases
     if amount > 0 then
-        self.animal.mobile.fight = self.animal.mobile.fight - math.min(amount, 100 - self:getAffection())
+        self.guar.mobile.fight = self.guar.mobile.fight - math.min(amount, 100 - self:getAffection())
     end
     self:setAffection(math.clamp(self:getAffection() + amount, 0, 100))
     return self:getAffection()
@@ -164,7 +164,7 @@ function Needs:updateAffection(timeSinceUpdate)
         timeSinceUpdate = timeSinceUpdate * moodConfig.affectionWaitMultiplier
     end
 
-    local changeAmount = self.animal.animalType.affection.changePerHour * timeSinceUpdate
+    local changeAmount = self.guar.animalType.affection.changePerHour * timeSinceUpdate
     self:modAffection(changeAmount)
 end
 
@@ -174,12 +174,12 @@ end
 
 ---@return number
 function Needs:getPlay()
-    return self.animal.refData.play or Needs.default.play
+    return self.guar.refData.play or Needs.default.play
 end
 
 ---@param play number
 function Needs:setPlay(play)
-    self.animal.refData.play = play
+    self.guar.refData.play = play
 end
 
 function Needs:modPlay(amount)
@@ -189,7 +189,7 @@ function Needs:modPlay(amount)
 end
 
 function Needs:updatePlay(timeSinceUpdate)
-    local changeAmount = self.animal.animalType.play.changePerHour * timeSinceUpdate
+    local changeAmount = self.guar.animalType.play.changePerHour * timeSinceUpdate
     self:modPlay(changeAmount)
 end
 
@@ -199,12 +199,12 @@ end
 
 ---@return number
 function Needs:getHappiness()
-    return self.animal.refData.happiness or Needs.default.happiness
+    return self.guar.refData.happiness or Needs.default.happiness
 end
 
 ---@param happiness number
 function Needs:setHappiness(happiness)
-    self.animal.refData.happiness = happiness
+    self.guar.refData.happiness = happiness
 end
 
 ---@return GuarWhisperer.Happiness.Status
@@ -214,7 +214,7 @@ end
 
 
 function Needs:updateHappiness()
-    local healthRatio = self.animal.reference.mobile.health.current / self.animal.reference.mobile.health.base
+    local healthRatio = self.guar.reference.mobile.health.current / self.guar.reference.mobile.health.base
     local hungerEffect = math.remap(self:getHunger(), 0, 100, -15, 30)
     local comfortEffect = math.remap(healthRatio, 0, 1.0, -100, 0)
     local affectionEffect = math.remap(self:getAffection(), 0, 100, -10, 40)
@@ -226,7 +226,7 @@ function Needs:updateHappiness()
 
     self:setHappiness(newHappiness)
 
-    self.animal.reference.mobile.flee = 75 - (self:getHappiness()/ 2)
+    self.guar.reference.mobile.flee = 75 - (self:getHappiness()/ 2)
     tes3ui.refreshTooltip()
 end
 
@@ -239,26 +239,26 @@ end
 function Needs:updateNeeds()
     --get the time since last updated
     local now = common.util.getHoursPassed()
-    if not self.animal:isActive() then
+    if not self.guar:isActive() then
         --not active, reset time
-        self.animal.refData.lastUpdated = now
+        self.guar.refData.lastUpdated = now
         return
     end
-    local lastUpdated = self.animal.refData.lastUpdated or now
+    local lastUpdated = self.guar.refData.lastUpdated or now
     local timeSinceUpdate = now - lastUpdated
     self:updatePlay(timeSinceUpdate)
     self:updateAffection(timeSinceUpdate)
     self:updateHappiness()
     self:updateHunger(timeSinceUpdate)
     self:updateTrust(timeSinceUpdate)
-    self.animal.refData.lastUpdated = now
+    self.guar.refData.lastUpdated = now
 end
 
 ---@private
 ---Gets the status of a need
 function Needs:getMood(moodType)
     for _, mood in ipairs(moodConfig[moodType]) do
-        if self.animal.refData[moodType] <= mood.maxValue then
+        if self.guar.refData[moodType] <= mood.maxValue then
             return mood
         end
     end

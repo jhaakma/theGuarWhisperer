@@ -7,6 +7,11 @@ local GuarCompanion = require("mer.theGuarWhisperer.GuarCompanion")
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("CommandMenuModel")
 
+---@class GuarWhisperer.CommandMenu
+---@field index number The index of the currently selected command
+---@field commandList table[] A list of commands that can be performed
+---@field activeCompanion GuarWhisperer.GuarCompanion The guar companion that is currently active
+---@field targetData GuarWhisperer.Ability.TargetData The data about the target we're looking at
 local CommandMenu = {}
 
 CommandMenu.index = 1
@@ -25,9 +30,9 @@ function CommandMenu:getActiveCommand()
     end
 end
 
-function CommandMenu:showCommandMenu(animal)
+function CommandMenu:showCommandMenu(guar)
     self.inMenu = true
-    self.activeCompanion = animal
+    self.activeCompanion = guar
     ui.createCommandMenu(self)
 end
 
@@ -72,19 +77,30 @@ end
 
 function CommandMenu:filterCommands()
     self.commandList = {}
-    for _, command in ipairs(self.currentPage.commands) do
+    for _, command in ipairs(self.activeCompanion.abilityList) do
         if command.requirements(self) then
             table.insert(self.commandList, command)
         end
     end
-    self.index = 1
+    table.insert(self.commandList,
+        {
+            id = "cancel",
+            label = function(e)
+                return "Cancel"
+            end,
+            description = "Exit menu",
+            command = function(e) end,
+            requirements = function(e) return true end
+        }
+    )
+     self.index = 1
 end
 
-function CommandMenu:changePage(newPage, animal)
+function CommandMenu:changePage(newPage, guar)
     self.currentPage = self.pages[newPage]
     self:checkCommandState()
     self:filterCommands()
-    self:showCommandMenu(animal)
+    self:showCommandMenu(guar)
 end
 
 
@@ -111,22 +127,22 @@ function CommandMenu:toggleCommandMenu()
     --command menu inactive, see if we're looking at a companion to turn the menu on
     else
         --playerTarget takes priority because of that stupidly large hitbox
-        local animal = GuarCompanion.get(tes3.getPlayerTarget())
+        local guar = GuarCompanion.get(tes3.getPlayerTarget())
         --otherwise do a ray cast
-        if not animal then
+        if not guar then
             local ray = tes3.rayTest{
                 position = tes3.getPlayerEyePosition(),
                 direction = tes3.getPlayerEyeVector(),
                 ignore = { tes3.player },
             }
             if ray then
-                animal = GuarCompanion.get(ray.reference)
+                guar = GuarCompanion.get(ray.reference)
             end
         end
 
-        if animal then
-            if animal:canTakeAction() then
-                self.activeCompanion = animal
+        if guar then
+            if guar:canTakeAction() then
+                self.activeCompanion = guar
                 self.activeCompanion.refData.commandActive = true
                 self.inMenu = false
                 self:checkCommandState()

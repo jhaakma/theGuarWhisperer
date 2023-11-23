@@ -1,6 +1,6 @@
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("MCM")
-local animalConfig = require("mer.theGuarWhisperer.animalConfig")
+local guarConfig = require("mer.theGuarWhisperer.guarConfig")
 local mcmConfig = common.config.mcm
 local function registerMcm()
 
@@ -209,7 +209,7 @@ local function registerMcm()
                     for obj in tes3.iterateObjects(tes3.objectType.creature) do
                         if not (obj.baseObject and obj.baseObject.id ~= obj.id ) then
                             if obj.script then
-                                if animalConfig.meshToConvertConfig[obj.mesh:lower()] then
+                                if guarConfig.meshToConvertConfig[obj.mesh:lower()] then
                                     baseCreatures[#baseCreatures+1] = (obj.baseObject or obj).id:lower()
                                 end
                             end

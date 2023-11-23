@@ -15,48 +15,48 @@ local Controls = require("mer.theGuarWhisperer.services.Controls")
 ---@field gender GuarWhisperer.Gender
 ---@field trust number
 
----@class GuarWhisperer.Genetics.GuarCompanion : GuarWhisperer.Companion.Guar
+---@class GuarWhisperer.Genetics.GuarCompanion : GuarWhisperer.GuarCompanion
 ---@field refData GuarWhisperer.Genetics.GuarCompanion.refData
 
 ---This component deals with genetics and breeding
 ---@class GuarWhisperer.Genetics
----@field animal GuarWhisperer.Genetics.GuarCompanion
+---@field guar GuarWhisperer.Genetics.GuarCompanion
 local Genetics = {}
 
----@param animal GuarWhisperer.Genetics.GuarCompanion
+---@param guar GuarWhisperer.Genetics.GuarCompanion
 ---@return GuarWhisperer.Genetics
-function Genetics.new(animal)
+function Genetics.new(guar)
     local self = setmetatable({}, { __index = Genetics })
-    self.animal = animal
+    self.guar = guar
     return self
 end
 
 function Genetics:isBaby()
-    return self.animal.refData.isBaby
+    return self.guar.refData.isBaby
 end
 
 ---@param isBaby boolean
 function Genetics:setIsBaby(isBaby)
-    self.animal.refData.isBaby = isBaby
+    self.guar.refData.isBaby = isBaby
 end
 
 ---@return GuarWhisperer.Gender
 function Genetics:getGender()
-    if not self.animal.refData.gender then
-        self.animal.refData.gender = math.random() < 0.55 and "male" or "female"
+    if not self.guar.refData.gender then
+        self.guar.refData.gender = math.random() < 0.55 and "male" or "female"
     end
-    return self.animal.refData.gender
+    return self.guar.refData.gender
 end
 
 ---Sets birth time to now
 function Genetics:setBirthTime()
-    self.animal.refData.birthTime = common.util.getHoursPassed()
+    self.guar.refData.birthTime = common.util.getHoursPassed()
 end
 
 ---Gets the time this guar was born
 ---@return number
 function Genetics:getBirthTime()
-    return self.animal.refData.birthTime or common.util.getHoursPassed()
+    return self.guar.refData.birthTime or common.util.getHoursPassed()
 end
 
 --Averages the attributes of mom and dad and adds some random mutation
@@ -77,16 +77,16 @@ function Genetics:inheritGenes(mom, dad)
         local finalValue = math.floor(average + mutation)
         finalValue = math.max(finalValue, 0)
         logger:debug(" - Setting %s to %d", attributeName, finalValue)
-        self.animal.stats:setBaseAttribute(attributeName, finalValue)
+        self.guar.stats:setBaseAttribute(attributeName, finalValue)
     end
-    self.animal.stats:setStats()
+    self.guar.stats:setStats()
 end
 
 function Genetics:randomiseGenes()
     logger:debug("Randomising genes")
     --For converting guars, we get its genetics by treating itself as its parents
     --Which randomises its attributes, then updateGrowth should apply to the object
-    self:inheritGenes(self.animal, self.animal)
+    self:inheritGenes(self.guar, self.guar)
 end
 
 function Genetics.getWhiteBabyChance()
@@ -131,28 +131,28 @@ function Genetics.getWhiteBabyChance()
 end
 
 function Genetics:getCanConceive()
-    if not self.animal.animalType.breedable then return false end
-    if not ( self.animal.refData.gender == "female" ) then return false end
+    if not self.guar.animalType.breedable then return false end
+    if not ( self.guar.refData.gender == "female" ) then return false end
     if self:isBaby() then return false end
-    if not self.animal.mobile.hasFreeAction then return false end
-    if self.animal.needs:getTrust() < moodConfig.skillRequirements.breed then return false end
-    if self.animal.refData.lastBirthed then
+    if not self.guar.mobile.hasFreeAction then return false end
+    if self.guar.needs:getTrust() < moodConfig.skillRequirements.breed then return false end
+    if self.guar.refData.lastBirthed then
         local now = common.util.getHoursPassed()
-        local hoursSinceLastBirth = now - self.animal.refData.lastBirthed
-        local enoughTimePassed = hoursSinceLastBirth > self.animal.animalType.birthIntervalHours
+        local hoursSinceLastBirth = now - self.guar.refData.lastBirthed
+        local enoughTimePassed = hoursSinceLastBirth > self.guar.animalType.birthIntervalHours
         if not enoughTimePassed then return false end
     end
     return true
 end
 
----@param animal GuarWhisperer.Genetics.GuarCompanion|GuarWhisperer.Companion.Guar
-function Genetics:canBeImpregnatedBy(animal)
-    if not animal.animalType.breedable then return false end
-    if not (animal.refData.gender == "male" ) then return false end
-    if animal.genetics:isBaby() then return false end
-    if not animal.mobile.hasFreeAction then return false end
-    if self.animal.needs:getTrust() < moodConfig.skillRequirements.breed then return false end
-    local distance = animal:distanceFrom(self.animal.reference)
+---@param guar GuarWhisperer.Genetics.GuarCompanion|GuarWhisperer.GuarCompanion
+function Genetics:canBeImpregnatedBy(guar)
+    if not guar.animalType.breedable then return false end
+    if not (guar.refData.gender == "male" ) then return false end
+    if guar.genetics:isBaby() then return false end
+    if not guar.mobile.hasFreeAction then return false end
+    if self.guar.needs:getTrust() < moodConfig.skillRequirements.breed then return false end
+    local distance = guar:distanceFrom(self.guar.reference)
     if distance > 1000 then
         return false
     end
@@ -160,13 +160,13 @@ function Genetics:canBeImpregnatedBy(animal)
 end
 
 function Genetics:breed()
-    --Find nearby animal
-    ---@type GuarWhisperer.Companion.Guar[]
+    --Find nearby guar
+    ---@type GuarWhisperer.GuarCompanion[]
     local partnerList = {}
 
-    self.animal.referenceManager:iterateReferences(function(_, animal)
-        if self:canBeImpregnatedBy(animal) then
-            table.insert(partnerList, animal)
+    self.guar.referenceManager:iterateReferences(function(_, guar)
+        if self:canBeImpregnatedBy(guar) then
+            table.insert(partnerList, guar)
         end
     end)
 
@@ -178,33 +178,33 @@ function Genetics:breed()
                 type = timer.real,
                 duration = 1,
                 callback = function()
-                    if not self.animal:isValid() then return end
-                    self.animal.refData.lastBirthed  = common.util.getHoursPassed()
-                    local babyObject = common.createCreatureCopy(self.animal.reference.baseObject)
-                    babyObject.name = string.format("%s Jr", self.animal:getName())
+                    if not self.guar:isValid() then return end
+                    self.guar.refData.lastBirthed  = common.util.getHoursPassed()
+                    local babyObject = common.createCreatureCopy(self.guar.reference.baseObject)
+                    babyObject.name = string.format("%s Jr", self.guar:getName())
                     local babyRef = tes3.createReference{
                         object = babyObject,
-                        position = self.animal.reference.position,
+                        position = self.guar.reference.position,
                         orientation =  {
-                            self.animal.reference.orientation.x,
-                            self.animal.reference.orientation.y,
-                            self.animal.reference.orientation.z,
+                            self.guar.reference.orientation.x,
+                            self.guar.reference.orientation.y,
+                            self.guar.reference.orientation.z,
                         },
-                        cell = self.animal.reference.cell,
-                        scale = self.animal.animalType.babyScale
+                        cell = self.guar.reference.cell,
+                        scale = self.guar.animalType.babyScale
                     }
                     timer.delayOneFrame(function()
-                        if not self.animal:isValid() then return end
-                        self.animal.initialiseRefData(babyRef, self.animal.animalType)
-                        baby = self.animal:new(babyRef)
+                        if not self.guar:isValid() then return end
+                        self.guar.initialiseRefData(babyRef, self.guar.animalType)
+                        baby = self.guar:new(babyRef)
                         if baby then
                             baby.genetics:setIsBaby(true)
-                            baby.needs:setTrust(self.animal.animalType.trust.babyLevel)
+                            baby.needs:setTrust(self.guar.animalType.trust.babyLevel)
                             baby.genetics:setBirthTime()
                             --baby:inheritGenes(self, partner)
                             baby.genetics:updateGrowth()
                             baby:setAttackPolicy("passive")
-                            baby:wander()
+                            baby.ai:wander()
                             babyRef.mobile.fight = 0
                             babyRef.mobile.flee = 0
                         else
@@ -223,7 +223,7 @@ function Genetics:breed()
         end
         local buttons = {}
         local i = 1
-        ---@param partner GuarWhisperer.Companion.Guar
+        ---@param partner GuarWhisperer.GuarCompanion
         for _, partner in ipairs(partnerList) do
             table.insert(buttons,
                 {
@@ -237,7 +237,7 @@ function Genetics:breed()
         table.insert( buttons, { text = "Cancel"})
 
         tes3ui.showMessageMenu{
-            message = string.format("Which partner would you like to breed %s with?", self.animal:getName() ),
+            message = string.format("Which partner would you like to breed %s with?", self.guar:getName() ),
             buttons = buttons
         }
     else
@@ -248,19 +248,19 @@ end
 function Genetics:updateGrowth()
     local age = common.util.getHoursPassed() - self:getBirthTime()
     if self:isBaby() then
-        if age > self.animal.animalType.hoursToMature then
+        if age > self.guar.animalType.hoursToMature then
             logger:debug("No longer a baby, turn into an adult")
             self:setIsBaby(false)
             -- if not self:getName() then
             --     self:setName(self.reference.object.name)
             -- end
-            self.animal.reference.scale = 1
+            self.guar.reference.scale = 1
         else
             --map scale to age
-            local newScale = math.remap(age, 0,  self.animal.animalType.hoursToMature, self.animal.animalType.babyScale, 1)
-            self.animal.reference.scale = newScale
+            local newScale = math.remap(age, 0,  self.guar.animalType.hoursToMature, self.guar.animalType.babyScale, 1)
+            self.guar.reference.scale = newScale
         end
-        self.animal.stats:setStats()
+        self.guar.stats:setStats()
     end
 end
 
