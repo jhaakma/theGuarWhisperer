@@ -126,7 +126,7 @@ function CommandMenu:toggleCommandMenu()
         self:destroy()
     --command menu inactive, see if we're looking at a companion to turn the menu on
     else
-        --playerTarget takes priority because of that stupidly large hitbox
+        --Get player target
         local guar = GuarCompanion.get(tes3.getPlayerTarget())
         --otherwise do a ray cast
         if not guar then
@@ -134,22 +134,27 @@ function CommandMenu:toggleCommandMenu()
                 position = tes3.getPlayerEyePosition(),
                 direction = tes3.getPlayerEyeVector(),
                 ignore = { tes3.player },
+                accurateSkinned = true,
             }
             if ray then
                 guar = GuarCompanion.get(ray.reference)
             end
         end
 
-        if guar then
-            if guar:canTakeAction() then
-                self.activeCompanion = guar
-                self.activeCompanion.refData.commandActive = true
-                self.inMenu = false
-                self:checkCommandState()
-                event.register("simulate", self.checkCommandState )
-
-                self:showContextMenu()
+        if not guar then
+            local ref = Rider.getRefBeingRidden()
+            if ref then
+                guar = GuarCompanion.get(ref)
             end
+        end
+
+        if guar and guar:canTakeAction() then
+            self.activeCompanion = guar
+            self.activeCompanion.refData.commandActive = true
+            self.inMenu = false
+            self:checkCommandState()
+            event.register("simulate", self.checkCommandState )
+            self:showContextMenu()
         end
     end
 end
@@ -177,6 +182,7 @@ function CommandMenu.checkCommandState()
             position = tes3.getPlayerEyePosition(),
             direction = tes3.getPlayerEyeVector(),
             ignore = ignoreList,
+            accurateSkinned = true,
         }
 
         local newTargetData = ray and { reference = ray.reference, intersection = ray.intersection:copy() } or {}

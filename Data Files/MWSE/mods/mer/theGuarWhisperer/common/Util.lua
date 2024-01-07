@@ -24,6 +24,15 @@ function Util.generateBoundingBox(node)
    return cloneForBB:createBoundingBox()
 end
 
+function Util.getLetter(keyCode)
+    for letter, code in pairs(tes3.scanCode) do
+        if code == keyCode then
+            local returnString = tes3.scanCodeToNumber[code] or letter
+            return string.upper(returnString)
+        end
+    end
+    return nil
+end
 
 function Util.removeLight(lightNode)
     for node in table.traverse{lightNode} do
@@ -66,6 +75,32 @@ function Util.removeLight(lightNode)
     end
     lightNode:update()
     lightNode:updateEffects()
+end
+
+function Util.attachSkinned(sceneNode, targets)
+    for _, node in pairs(targets.children) do
+        local skin = node.skinInstance
+        local root = skin and skin.root
+        skin.root = sceneNode:getObjectByName("Bip01")
+        for i, bone in ipairs(skin.bones) do
+            skin.bones[i] = sceneNode:getObjectByName(bone.name)
+        end
+        skin.root:attachChild(node)
+    end
+end
+
+---Checks if the player is running or not
+--- by checking if the shift key is pressed
+--- and if the player has always run enabled
+function Util.isRunningEnabled()
+    local inputController = tes3.worldController.inputController
+    local alwaysRun = tes3.mobilePlayer.alwaysRun
+    local shiftDown = inputController:isShiftDown()
+    if not alwaysRun then
+        return shiftDown
+    else
+        return not shiftDown
+    end
 end
 
 return Util

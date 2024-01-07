@@ -7,7 +7,7 @@ local this = {}
 this.getTitle = function(e)
     ---@type GuarWhisperer.GuarCompanion
     local guar = e.activeCompanion
-    return string.format("Command %s", guar:getName())
+    return guar:format("Command {Name}")
 end
 
 

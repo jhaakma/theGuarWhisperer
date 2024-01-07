@@ -1,5 +1,4 @@
 local common = require("mer.theGuarWhisperer.common")
-local logger = common.createLogger("MCM")
 local guarConfig = require("mer.theGuarWhisperer.guarConfig")
 local mcmConfig = common.config.mcm
 local function registerMcm()
@@ -48,15 +47,9 @@ local function registerMcm()
 
         settingsCategory:createKeyBinder{
             label = "Toggle Command Menu",
-            description = "The key or key combination used to toggle the context command menu. Default: q",
-            allowCombinations = true,
+            description = "The key or key combination used to toggle the context command menu. Default: Q",
+            allowCombinations = false,
             variable = mwse.mcm.createTableVariable{ id = "commandToggleKey", table = mcmConfig }
-        }
-
-        settingsCategory:createYesNoButton{
-            label = "Display all Gear",
-            description = "Enable this if you don't have Ashfall installed but want to see all the cool camping equipment on the back of your pack guar.",
-            variable = mwse.mcm.createTableVariable{ id = "displayAllGear", table = mcmConfig }
         }
 
         settingsCategory:createSlider{
@@ -85,7 +78,9 @@ local function registerMcm()
             },
             variable = mwse.mcm.createTableVariable{ id = "logLevel", table = mcmConfig },
             callback = function(self)
-                logger:setLogLevel(self.variable.value)
+                for _, logger in pairs(common.loggers) do
+                    logger:setLogLevel(self.variable.value)
+                end
             end
         }
 

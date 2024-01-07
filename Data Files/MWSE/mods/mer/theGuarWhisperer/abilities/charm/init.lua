@@ -17,9 +17,9 @@ function Charm.charm(guar, ref)
         return
     end
     if tes3.persuade{ actor = ref, Charm.getCharmModifier(guar) } then
-        tes3.messageBox("%s successfully charmed %s.", guar:getName(), ref.object.name)
+        tes3.messageBox(guar:format("{Name} successfully charmed %s.", ref.object.name))
     else
-        tes3.messageBox("%s failed to charm %s.", guar:getName(), ref.object.name)
+        tes3.messageBox(guar:format("{Name} failed to charm %s.", ref.object.name))
     end
 end
 

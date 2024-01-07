@@ -24,7 +24,7 @@ end
 ---@param object tes3object|tes3misc
 ---@param node? niNode
 function Mouth:putItemInMouth(object, node)
-    logger:info("Putting %s in %s's mouth", object.name, self.guar:getName())
+    logger:debug("Putting %s in %s's mouth", object.name, self.guar:getName())
     --Get item node and clear transforms
     local itemNode = (node or tes3.loadMesh(object.mesh)):clone()
     itemNode:clearTransforms()
@@ -160,7 +160,7 @@ end
 function Mouth:eatFromContainer(target)
     local success = self:harvestItem(target, false)
     if not success then
-        tes3.messageBox("%s wasn't unable to get any nutrition from the %s", self.guar:getName(), target.object.name)
+        tes3.messageBox(self.guar:format("{Name} was unable to get any nutrition from the %s", target.object.name))
         return
     end
     for _, item in pairs(self:getCarriedItems()) do
@@ -174,7 +174,7 @@ function Mouth:eatFromContainer(target)
         self.guar.hunger:processFood(foodAmount)
     end
     tes3.playSound{ reference = self.guar.reference, sound = "Swallow" }
-    tes3.messageBox("%s eats the %s", self.guar:getName(), target.object.name)
+    tes3.messageBox(self.guar:format("{Name} ats the %s", target.object.name))
     timer.start{
         type = timer.simulate,
         duration = 1,
@@ -196,7 +196,7 @@ function Mouth:eatFromIngredient(target)
         playSound = false
     }
     tes3.playSound{ reference = self.guar.reference, sound = "Swallow" }
-    tes3.messageBox("%s eats the %s", self.guar:getName(), target.object.name)
+    tes3.messageBox(self.guar:format("{Name} eats the %s", target.object.name))
     timer.start{
         type = timer.simulate,
         duration = 1,
@@ -248,9 +248,7 @@ function Mouth:eatFromInventory(item, itemData)
             if not self.guar:isValid() then return end
             event.trigger("GuarWhisperer:AteFood", { reference = self.guar.reference, itemId = itemId }  )
             tes3.playSound{ reference = self.guar.reference, sound = "Swallow" }
-            tes3.messageBox(
-                "%s gobbles up the %s.",
-                self.guar:getName(), string.lower(item.name)
+            tes3.messageBox(self.guar:format("{Name} gobbles up the %s.", string.lower(item.name))
             )
         end
     }
@@ -322,9 +320,9 @@ function Mouth:handOverItems()
     }
 
     if #carriedItems == 1 then
-        tes3.messageBox("%s brings you %s x%d.", self.guar:getName(), carriedItems[1].name, carriedItems[1].count)
+        tes3.messageBox(self.guar:format("{Name} brings you %s x%d.", carriedItems[1].name, carriedItems[1].count))
     else
-        local message = string.format("%s brings you the following:\n", self.guar:getName())
+        local message = self.guar:format("{Name} brings you the following:\n")
         for _, item in pairs(carriedItems) do
             message = message .. string.format("%s x%d,\n", item.name, item.count)
         end
@@ -385,8 +383,8 @@ function Mouth:feed()
         if not self.guar:isValid() then return end
         tes3ui.showInventorySelectMenu{
             reference = tes3.player,
-            title = string.format("Feed %s", self.guar:getName()),
-            noResultsText = string.format("You do not have any appropriate food."),
+            title = self.guar:format("Feed {name}"),
+            noResultsText = "You do not have any appropriate food.",
             filter = function(e)
                 logger:trace("Filter: checking: %s", e.item.id)
                 for id, value in pairs(self.guar.animalType.foodList) do

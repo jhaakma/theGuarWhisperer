@@ -74,9 +74,11 @@ end
 function Pack:canEquipPack()
     return self.guar.refData.hasPack ~= true
         and tes3.player.object.inventory:contains(common.packId)
-        and self.guar.needs:hasSkillReqs("pack")
+        and self.guar.needs:hasTrustLevel("Trusting")
+        and (not self.guar.genetics:isBaby())
 end
 
+---Returns true if the guar has a pack equipped
 function Pack:hasPack()
     return self.guar.refData.hasPack == true
 end
@@ -93,7 +95,7 @@ local function findNamedParentNode(node, name)
     local parent = node
     while parent do
         if parent.name == name then
-            logger:info("Found parent %s", name)
+            logger:debug("Found parent %s", name)
             return parent
         end
         parent = parent.parent
@@ -153,7 +155,7 @@ function Pack:takeItemLookingAt()
                 if result and result.object then
                     logger:debug("Ray hit %s", result.object.name)
                     if nodeConfig.getItems then
-                        logger:info("Checking %s, has items", nodeConfig.id)
+                        logger:debug("Checking %s, has items", nodeConfig.id)
                         local node = result.object
                         local hitNode = findNamedParentNode(node, nodeConfig.id)
 
@@ -189,6 +191,7 @@ function Pack:takeItemLookingAt()
             end
         end
     end
+    --Didn't find anything, opening pack instead
     logger:debug("Entering pack")
     self.guar.refData.triggerDialog = true
     self.guar.reference.context.companion = 1

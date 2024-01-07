@@ -15,10 +15,28 @@ local bushcraftingRecipes = {
                 requirement = 15,
             }
         },
-        category = "Toys",
+        category = "Guar Equipment",
         rotationAxis = "z",
         previewScale = 0.7,
     },
+    {
+        id = "mer_tgw_guarpack",
+        craftableId = "mer_tgw_guarpack",
+        description = "A pack for your guar to carry your items. Doubles as a saddle for riding.",
+        materials = {
+            { material = "fabric", count = 2 },
+            { material = "leather", count = 2 },
+            { material = "straw", count = 6 },
+            { material = "sack", count = 2 }
+        },
+        skillRequirements = {
+            {
+                skill = "Bushcrafting",
+                requirement = 25,
+            }
+        },
+        category = "Guar Equipment",
+    }
 }
 
 local carvingRecipes = {

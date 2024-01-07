@@ -17,7 +17,6 @@ local logger = common.createLogger("Ability")
 ---@field labelColor? string *Default: "normal_color"* The color of the label, must be valid for tes3.getPalette()
 ---@field description string A description of this command
 ---@field command fun(e: GuarWhisperer.Ability.params) A function that is called when this command is selected
----@field blockActivateDuration? number *Default: 0.1* How many seconds to prevent activation while performing this action
 ---@field doSteal? boolean TODO: replace with labelColor
 ---@field requirements fun(e: GuarWhisperer.Ability.params): boolean A function that returns true if the guar meets the requirements to perform this command
 ---@field priority? number Determines the order the command appears in the menu

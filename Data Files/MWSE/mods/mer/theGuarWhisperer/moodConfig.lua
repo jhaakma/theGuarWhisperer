@@ -56,10 +56,7 @@ this.affection = {
         id = "Neglected",
         ---@param guar GuarWhisperer.GuarCompanion
         pettingResult = function(guar)
-            return string.format(
-                "You you pat %s, but %s still looks neglected.",
-                guar:getName(), guar.syntax:getHeShe(true)
-            )
+            return guar:format("You you pat {name}, but {he} still looks neglected.")
         end,
         maxValue = 25
     },
@@ -67,10 +64,7 @@ this.affection = {
         id = "Lonely",
         ---@param guar GuarWhisperer.GuarCompanion
         pettingResult = function(guar)
-            return string.format(
-                "%s starts to cheer up as you pat %s on the head.",
-                guar:getName(), guar.syntax:getHimHer(true)
-            )
+            return guar:format("{Name} starts to cheer up as you pat {him} on the head.")
         end,
         maxValue = 50
     },
@@ -78,10 +72,7 @@ this.affection = {
         id = "Affectionate",
         ---@param guar GuarWhisperer.GuarCompanion
         pettingResult = function(guar)
-            return string.format(
-                "%s purrs loudly as you give %s a scratch behind the ears.",
-                guar:getName(), guar.syntax:getHimHer(true)
-            )
+            return guar:format("{Name} purrs loudly as you give {him} a scratch behind the ears.")
         end,
         maxValue = 75
     },
@@ -89,10 +80,7 @@ this.affection = {
         id = "Very Affectionate",
         ---@param guar GuarWhisperer.GuarCompanion
         pettingResult = function(guar)
-            return string.format(
-                "%s snuggles you affectionately.",
-                guar:getName()
-            )
+            return guar:format("{Name} snuggles you affectionately.")
         end,
         maxValue = 100
     },
@@ -102,11 +90,18 @@ this.defaultAffection = 20
 this.affectionWaitMultiplier = 0.6
 
 ---@class GuarWhisperer.Trust.Status
----@field id string @The id of the status
+---@field id GuarWhisperer.Trust.id @The id of the status
 ---@field description string @The description of the status, displayed to the player
 ---@field skillDescription? string @The description of the skill increase, displayed to the player
 ---@field minValue number @The minimum value of the status
 ---@field maxValue number @The maximum value of the status
+
+---@alias GuarWhisperer.Trust.id
+---| '"Untrusting"'
+---| '"Wary"'
+---| '"Familiar"'
+---| '"Trusting"'
+---| '"Very Trusting"'
 
 ---@type GuarWhisperer.Trust.Status[]
 this.trust = {
@@ -133,7 +128,7 @@ this.trust = {
     {
         id = "Trusting",
         description = "is beginning to trust you",
-        skillDescription = "can now wear a backpack.",
+        skillDescription = "can now wear a pack and be ridden.",
         minValue = 60,
         maxValue = 80
     },
@@ -145,6 +140,13 @@ this.trust = {
         maxValue = 100
     },
 }
+---@type table<string, GuarWhisperer.Trust.Status>
+this.trustMap = {}
+for _, status in ipairs(this.trust) do
+    this.trustMap[status.id] = status
+end
+
+
 this.defaultTrust = 10
 ---Multiplier applied to trust gain while waiting/resting
 this.trustWaitMultiplier = 0.2

@@ -1,6 +1,7 @@
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("AI")
 local guarConfig = require("mer.theGuarWhisperer.guarConfig")
+Rider = require("mer.theGuarWhisperer.components.Rider")
 local Charm = require("mer.theGuarWhisperer.abilities.charm")
 
 ---@class GuarWhisperer.AI.GuarCompanion.refData
@@ -9,6 +10,7 @@ local Charm = require("mer.theGuarWhisperer.abilities.charm")
 ---@field aiBroken number @Number of times the AI has broken
 ---@field stuckStrikes number @Number of times the AI has been stuck
 ---@field lastStuckPosition {x:number, y:number, z:number} @Position where the AI got stuck
+---@field isRiding boolean @True while the player is riding this guar
 
 
 ---@class GuarWhisperer.AI.GuarCompanion : GuarWhisperer.GuarCompanion
@@ -79,6 +81,12 @@ end
 
 --- Teleport if too far away while following
 function AI:closeTheDistanceTeleport()
+    if self.guar:isOverEncumbered() then
+        tes3.messageBox(self.guar:format("{Name} is over-encumbered."))
+        self:wait()
+        return
+    end
+
     if tes3.player.cell.isInterior then
         logger:debug("No teleport: player is in interior")
         return
@@ -87,11 +95,16 @@ function AI:closeTheDistanceTeleport()
     elseif self.guar:isDead() then
         return
     end
-    local doTeleportBehind = (
-        tes3.player.mobile.isMovingForward or
-        tes3.player.mobile.isMovingLeft or
-        tes3.player.mobile.isMovingRight
-    )
+    local doTeleportBehind
+    if Rider.getRefBeingRidden() then
+        doTeleportBehind = true
+    else
+        doTeleportBehind = (
+            tes3.mobilePlayer.isMovingForward or
+            tes3.mobilePlayer.isMovingLeft or
+            tes3.mobilePlayer.isMovingRight
+        )
+    end
     local distance = doTeleportBehind and -400 or 400
     logger:debug("Closing the distance teleport")
     self:teleportToPlayer(distance)
@@ -104,10 +117,20 @@ function AI:teleportToPlayer(distance)
         logger:debug("No teleport: player is in interior")
         return
     end
-    distance = distance or 0
-    local eyeVec = tes3.getPlayerEyeVector()
-    local position = tes3.getPlayerEyePosition()
 
+    distance = distance or 400
+
+    local ridingRef = Rider.getRefBeingRidden()
+    local eyeVec
+    if ridingRef then
+        logger:debug("Teleporting to player while riding using riding ref orientation of %s", ridingRef.orientation.z)
+        eyeVec = ridingRef.forwardDirection
+    else
+        logger:debug("Teleporting to player while not riding using player orientation of %s", tes3.player.orientation.z)
+        eyeVec = tes3.player.forwardDirection
+    end
+
+    local position = tes3.getPlayerEyePosition()
     local isForward = distance >= 0
     local direction = eyeVec * (isForward and 1 or -1)
 
@@ -118,16 +141,19 @@ function AI:teleportToPlayer(distance)
         position = position,
         direction = direction,
         maxDistance = math.abs(distance),
-        ignore = {tes3.player, self.guar.reference}
+        ignore = {tes3.player, self.guar.reference, self.guar.rider:getRefBeingRidden()}
     }
     if rayResult and rayResult.intersection then
         distance = math.min(distance, rayResult.distance)
-        logger:debug("Hit %s, new distance: %s", rayResult.object, distance)
+        logger:debug("Hit %s, new distance: %s",
+            rayResult.reference or rayResult.object,
+            distance)
     end
 
+    local ref = ridingRef or tes3.player
     local newPosition = tes3vector3.new(
-        tes3.player.position.x + ( distance * math.sin(tes3.player.orientation.z)),
-        tes3.player.position.y + ( distance * math.cos(tes3.player.orientation.z)),
+        tes3.player.position.x + ( distance * math.sin(ref.orientation.z)),
+        tes3.player.position.y + ( distance * math.cos(ref.orientation.z)),
         tes3.player.position.z
     )
 
@@ -136,7 +162,7 @@ function AI:teleportToPlayer(distance)
         local upDownResult = tes3.rayTest{
             position = newPosition,
             direction = tes3vector3.new(0, 0, -1),
-            maxDistance = 5000,
+            maxDistance = 10000,
             ignore = {tes3.player, self.guar.reference}
         }
         --no down result, try up result
@@ -144,7 +170,7 @@ function AI:teleportToPlayer(distance)
             upDownResult = tes3.rayTest{
                 position = newPosition,
                 direction = tes3vector3.new(0, 0, 1),
-                maxDistance = 5000,
+                maxDistance = 10000,
                 ignore = {tes3.player, self.guar.reference},
                 useBackTriangles = true
             }
@@ -167,8 +193,7 @@ function AI:teleportToPlayer(distance)
             logger:debug("Setting Z position from %s to %s", newPosition.z, newZ)
             newPosition = tes3vector3.new(newPosition.x, newPosition.y, newZ)
         else
-            logger:debug("No teleport: failed to find ground below player")
-            return
+            logger:warn("failed to find ground below player")
         end
     end
 
@@ -207,7 +232,7 @@ function AI:wait(idles)
             0, --n/a
             0
         },
-        duration = 2
+        duration = 2,
     }
 end
 
@@ -250,7 +275,7 @@ function AI:attack(target, blockMessage)
     logger:debug("Attacking %s", target.object.name)
 
     if blockMessage ~= true then
-        tes3.messageBox("%s attacking %s", self.guar:getName(), target.object.name)
+        tes3.messageBox(self.guar:format("{Name} attacking %s",  target.object.name))
     end
     self.guar.refData.previousAiState = self:getAI()
     self:follow()
@@ -271,6 +296,11 @@ end
 --- Move to the given position
 function AI:moveTo(position)
     logger:debug("Moving to %s", position)
+    tes3.playAnimation({
+        reference = self.guar.reference,
+        group = tes3.animationGroup.wait,
+        startFlag = tes3.animationStartFlag.immediate,
+    })
     tes3.setAITravel{ reference = self.guar.reference, destination = position }
     self.guar.refData.aiState = "moving"
 end
@@ -281,11 +311,34 @@ function AI:returnTo()
     self.guar.aiFixer:resetFollow()
 end
 
+function AI:disableCollision()
+    self.guar.reference.mobile.mobToMobCollision = false
+    self.guar.reference.mobile.movementCollision = false
+end
+
+function AI:enableCollision()
+    self.guar.reference.mobile.mobToMobCollision = true
+    self.guar.reference.mobile.movementCollision = true
+end
+
+
+function AI:collisionFix()
+    self:disableCollision()
+    timer.start{
+        duration = 0.5,
+        callback = function()
+            if not self.guar:isValid() then return end
+            self:enableCollision()
+        end
+    }
+end
+
 --keep ai in sync
 function AI:updateAI()
+    if not self.guar:isActive() then return end
+
     local aiState = self:getAI()
     local packageId = tes3.getCurrentAIPackageId{ reference = self.guar.reference }
-
     local brokenLimit = 2
     self.guar.refData.aiBroken = self.guar.refData.aiBroken or 0
 
@@ -322,6 +375,9 @@ function AI:updateAI()
             logger:debug("%s Restoring %s AI", self.guar:getName(), aiState)
             self:setAI(aiState)
         end
+        if aiState == "waiting" and self.guar.rider:isRiding() then
+            self:follow()
+        end
     elseif aiState == "attacking" then
         if self.guar.reference.mobile.inCombat ~= true then
             logger:debug("Current AI package: %s", table.find(tes3.aiPackage, packageId) or packageId)
@@ -329,10 +385,24 @@ function AI:updateAI()
             self:restorePreviousAI()
         end
     elseif aiState == "moving" then
-        if self.guar.reference.mobile.actionData.aiBehaviorState == 255 then
+        if self.guar.reference.mobile.actionData.aiBehaviorState == -1 then
             logger:debug("Current AI package: %s", table.find(tes3.aiPackage, packageId) or packageId)
             logger:debug("Setting to wait after moving")
+            self:collisionFix()
             self:wait()
+        end
+        if self:getIsStuck() then
+            logger:debug("Stuck while moving, disable collision for a second")
+            self:disableCollision()
+
+            timer.start{
+                duration = 1,
+                callback = function()
+                    if not self.guar:isValid() then return end
+                    logger:debug("Re-enabling collision")
+                    self:enableCollision()
+                end
+            }
         end
     --Check if stuck on something while wandering
     elseif aiState == "wandering" then
@@ -388,9 +458,6 @@ function AI:getIsStuck()
     local strikesNeeded = 5
 
     local maxDistance = 10
-    -- if self.guar.reference.mobile.isRunning then
-    --     maxDistance = 10
-    -- end
 
     self.guar.refData.stuckStrikes = self.guar.refData.stuckStrikes or 0
     --self.guar.refData.stuckStrikes: we check x times before deciding he's stuck
@@ -454,18 +521,20 @@ function AI:updateTravelSpells()
         --[tes3.effect.invisibility] = "mer_tgw_invs"
     }
 
+    local isFollowing = self:getAI() == "following"
+        or Rider.getRefBeingRidden() == self.guar.reference
+
     if not self.guar:isActive() then return end
     for effect, spell in pairs(effects) do
         if tes3.isAffectedBy{ reference = tes3.player, effect = effect } then
             --not affected but player is
             if not tes3.isAffectedBy{ reference = self.guar.reference, effect = effect } then
-                if self:getAI() == "following" then
+                if isFollowing then
                     logger:debug("Adding spell to %s", self.guar:getName())
                     self.guar.object.spells:remove(spell)
                     tes3.addSpell{reference = self.guar.reference, spell = spell }
                 end
             end
-
         else
             --effected but player isn't
             if tes3.isAffectedBy{ reference = self.guar.reference, effect = effect } then
@@ -475,7 +544,7 @@ function AI:updateTravelSpells()
         end
         --affected no longer following
         if tes3.isAffectedBy{ reference = self.guar.reference, effect = effect } then
-            if self:getAI() ~= "following" then
+            if not isFollowing then
                 logger:debug("Removing spell from %s", self.guar:getName())
                 tes3.removeSpell{reference = self.guar.reference, spell = spell }
             end

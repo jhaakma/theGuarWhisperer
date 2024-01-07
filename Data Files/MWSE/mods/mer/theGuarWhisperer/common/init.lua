@@ -93,6 +93,7 @@ end
 ---@param obj tes3creature
 ---@return tes3creature
 function common.createCreatureCopy(obj)
+    logger:debug("Creating copy of %s", obj.id)
     local newObj = obj:createCopy{}
     newObj.persistent = true
     newObj.modified = true

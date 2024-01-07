@@ -50,9 +50,11 @@ function GuarConverter.convert(reference, convertConfig)
         newObj.mesh = convertConfig.mesh
     end
     GuarConverter.overrideStats(newObj, convertConfig)
+    newObj.swims = true
+    newObj.script = tes3.dataHandler.nonDynamicData:findScript("mer_tgw_guarscript")
 
-    local name = reference.data.tgw and reference.data.tgw.name
-        or convertConfig.name
+    local guarData = GuarCompanion.getData(reference)
+    local name = guarData and guarData.name or convertConfig.name
     if name then
         logger:debug("Replacing name with %s", name)
         newObj.name = name
@@ -69,9 +71,19 @@ function GuarConverter.convert(reference, convertConfig)
         },
         cell = reference.cell,
     }
-    if reference.data.tgw then
-        newRef.data.tgw = table.copy(reference.data.tgw)
+    if guarData then
+        newRef.data.tgw = table.copy(guarData)
     end
+
+    --clear inventory
+    logger:debug("Clearing inventory")
+    for _, stack in pairs(newRef.object.inventory) do
+        newRef.object.inventory:removeItem{
+            item = stack.object,
+            playSound = false
+        }
+    end
+
     if convertConfig.transferInventory then
         logger:debug("Transfering existing inventory")
         for _, stack in pairs(reference.object.inventory) do

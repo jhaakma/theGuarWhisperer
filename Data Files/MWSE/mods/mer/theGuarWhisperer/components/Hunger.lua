@@ -36,7 +36,7 @@ function Hunger:processFood(amount)
     }
 
     --Before guar is willing to follow, feeding increases trust
-    if not self.guar.needs:hasSkillReqs("follow") then
+    if not self.guar.needs:hasTrustLevel("Wary") then
         self.guar.needs:modTrust(3)
     end
 end

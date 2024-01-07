@@ -4,8 +4,11 @@
 local this = {}
 
 local commandMenuId = tes3ui.registerID("Commander_Tooltip")
+local Tooltip = require("mer.theGuarWhisperer.ui.components.Tooltip")
 local commonUI = require("mer.theGuarWhisperer.ui")
 
+---@param cMenu GuarWhisperer.CommandMenu
+---@param parentBlock tes3uiElement
 local function createCommandContainer(cMenu, parentBlock)
     local outerBlock = parentBlock:createBlock({})
     outerBlock.autoHeight = true
@@ -15,7 +18,7 @@ local function createCommandContainer(cMenu, parentBlock)
     outerBlock.childAlignX = 0.5
 
     --Title
-    local titleText = string.format("Command %s", cMenu.activeCompanion:getName())
+    local titleText = cMenu.activeCompanion:format("Command {Name}")
     local title = outerBlock:createLabel{ text = titleText }
     title.color = tes3ui.getPalette("header_color")
 
@@ -61,12 +64,12 @@ local function createCommandList(cMenu, parentBlock)
             cMenu:performAction()
         end)
         label:register("help", function()
-            commonUI.createTooltip(text, command.description)
+            Tooltip.showTooltip{ header = text, text = command.description }
         end)
     end
 end
 
-
+---@param cMenu GuarWhisperer.CommandMenu
 function this.createCommandMenu(cMenu)
 
     local menu = tes3ui.createMenu{ id = commandMenuId, fixedFrame = true }
@@ -100,13 +103,19 @@ function this.destroyCommandMenu()
     end
 end
 
+---@param cMenu GuarWhisperer.CommandMenu
 function this.createContextMenu(cMenu)
     local menu = tes3ui.findMenu(tes3ui.registerID("MenuMulti"))
     if menu then
         local contextMenu = menu:findChild(commandMenuId)
         local activeCommand = cMenu:getActiveCommand()
         local target =  tes3.getPlayerTarget()
-        if cMenu.activeCompanion and activeCommand and not ( target and target ~= cMenu.activeCompanion.reference ) then
+
+        local doShowContextMenu = cMenu.activeCompanion
+            and activeCommand
+            and not ( target and target ~= cMenu.activeCompanion.reference )
+
+        if doShowContextMenu then
             --refresh contextMenu
             if contextMenu then
                 contextMenu:destroy()

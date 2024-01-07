@@ -8,6 +8,7 @@ local CraftingFramework = require("CraftingFramework")
 local Controls = require("mer.theGuarWhisperer.services.Controls")
 local AIFixer = require("mer.theGuarWhisperer.components.AIFixer")
 local Syntax = require("mer.theGuarWhisperer.components.Syntax")
+local Formatter = require("mer.theGuarWhisperer.services.Formatter")
 local Pack = require("mer.theGuarWhisperer.components.Pack")
 local Stats = require("mer.theGuarWhisperer.components.Stats")
 local Genetics = require("mer.theGuarWhisperer.components.Genetics")
@@ -15,6 +16,7 @@ local Lantern = require("mer.theGuarWhisperer.components.Lantern")
 local Needs = require("mer.theGuarWhisperer.components.Needs")
 local Hunger = require("mer.theGuarWhisperer.components.Hunger")
 local Mouth = require("mer.theGuarWhisperer.components.Mouth")
+local Rider = require("mer.theGuarWhisperer.components.Rider")
 local AI = require("mer.theGuarWhisperer.components.AI")
 local Ability = require("mer.theGuarWhisperer.abilities.Ability")
 
@@ -54,6 +56,7 @@ local Ability = require("mer.theGuarWhisperer.abilities.Ability")
 ---@field dead boolean is dead
 ---@field commandActive boolean is currently doing a command
 ---@field triggerDialog boolean trigger dialog on next activate
+---@field gender GuarWhisperer.Gender
 
 ---@class GuarWhisperer.GuarCompanion
 ---@field reference tes3reference
@@ -66,18 +69,21 @@ local Ability = require("mer.theGuarWhisperer.abilities.Ability")
 ---@field stats GuarWhisperer.Stats
 ---@field aiFixer GuarWhisperer.AIFixer
 ---@field pack GuarWhisperer.Pack
----@field syntax GuarWhisperer.Syntax
 ---@field genetics GuarWhisperer.Genetics
 ---@field lantern GuarWhisperer.Lantern
 ---@field needs GuarWhisperer.Needs
 ---@field hunger GuarWhisperer.Hunger
 ---@field mouth GuarWhisperer.Mouth
+---@field rider GuarWhisperer.Rider
 ---@field ai GuarWhisperer.AI
 ---@field abilities table<GuarWhisperer.GuarCompanion.Abilities, GuarWhisperer.Ability> #Ability id -> Ability
 ---@field abilityList GuarWhisperer.Ability[] #List of abilities in order they appear in the command menu
 local GuarCompanion = {}
 
 ---@alias GuarWhisperer.GuarCompanion.Abilities
+---| '"mount"'
+---| '"dismount"'
+---| '"showRidingInstructions"'
 ---| '"charm"'
 ---| '"attack"'
 ---| '"eat"'
@@ -127,10 +133,10 @@ GuarCompanion.pickableRotations = {
 GuarCompanion.referenceManager = CraftingFramework.ReferenceManager:new{
     id = "GuarWhisperer_Animals",
     requirements = function(_, ref)
-        return ref.supportsLuaData and ref.data.tgw ~= nil
+        return GuarCompanion.getData(ref) ~= nil
     end,
     onActivated = function(refManager, ref)
-        local guar = GuarCompanion:new(ref)
+        local guar = GuarCompanion.get(ref)
         if guar then
             --Cache the guar class
             refManager.references[ref] = guar
@@ -143,6 +149,7 @@ GuarCompanion.referenceManager = CraftingFramework.ReferenceManager:new{
 }
 
 ---@param reference tes3reference
+---@param animalType string
 ---@return GuarWhisperer.GuarCompanion.RefData
 function GuarCompanion.initialiseRefData(reference, animalType)
     logger:debug("Initialising Ref data for %s", reference)
@@ -179,18 +186,17 @@ end
 ---@return GuarWhisperer.GuarCompanion|nil
 function GuarCompanion.get(reference)
     local cachedAnimal = GuarCompanion.referenceManager.references[reference]
-    return cachedAnimal or GuarCompanion:new(reference)
+    local isValid = cachedAnimal and not table.empty(cachedAnimal)
+    return isValid and cachedAnimal or GuarCompanion:new(reference)
 end
 
 
 --- Get the guar type for a converter guar
----@param reference tes3reference
+--- TODO: implement for other animal types
+---@param _ tes3reference
 ---@return GuarWhisperer.AnimalType?
-function GuarCompanion.getAnimalType(reference)
-    return reference
-     and reference.data.tgw
-     and guarConfig.animals[reference.data.tgw.type]
-     or guarConfig.animals.guar
+function GuarCompanion.getAnimalType(_)
+    return guarConfig.animals.guar
 end
 
 function GuarCompanion.getAnimalObjects()
@@ -209,6 +215,8 @@ function GuarCompanion.getAll()
             local guar = GuarCompanion.get(reference)
             if guar then
                 table.insert(animals, guar)
+            else
+                objects[objId] = nil
             end
         end
     end
@@ -225,11 +233,43 @@ function GuarCompanion.addToCreatedObjects(obj)
     common.addToEasyEscortBlacklist(obj)
 end
 
+function GuarCompanion.getCache()
+    tes3.player.data.tgw_guarCache = tes3.player.data.tgw_guarCache or {}
+    return tes3.player.data.tgw_guarCache
+end
+
+---Cache the reference data on the player reference.
+---This is a fallback for when guars bug out and their ref data gets nuked
+---@param reference tes3reference
+function GuarCompanion.cacheData(reference)
+    GuarCompanion.getCache()[reference.baseObject.id:lower()] = reference.data.tgw
+end
+
+---Get the reference data for a guar, if it exists
+---@param reference tes3reference
+---@return GuarWhisperer.GuarCompanion.RefData|nil
+function GuarCompanion.getData(reference)
+    if not (reference and reference.supportsLuaData) then return end
+    if reference.data.tgw then
+        GuarCompanion.cacheData(reference)
+        return reference.data.tgw
+    end
+    local data = GuarCompanion.getCache()[reference.baseObject.id:lower()]
+    if data then
+        reference.data.tgw = data
+        logger:error("%s lost its reference data, restoring from cache", reference)
+        return data
+    end
+end
+
 --- Construct a new GuarCompanion
 ---@param reference tes3reference
 ---@return GuarWhisperer.GuarCompanion|nil
 function GuarCompanion:new(reference)
-    if not (reference and reference.supportsLuaData and reference.data.tgw) then return end
+    local data = GuarCompanion.getData(reference)
+    if not data then return end
+    logger:debug("Creating new GuarCompanion from %s", reference)
+
     local animalType = GuarCompanion.getAnimalType(reference)
     if not animalType then
         logger:trace("No guar type")
@@ -240,18 +280,18 @@ function GuarCompanion:new(reference)
         object = reference.object,
         mobile = reference.mobile,
         animalType = animalType,
-        refData = reference.data.tgw,
+        refData = data,
     }
     newAnimal.safeRef = tes3.makeSafeObjectHandle(reference)
     newAnimal.stats = Stats.new(newAnimal)
     newAnimal.aiFixer = AIFixer.new(newAnimal)
     newAnimal.pack = Pack.new(newAnimal)
-    newAnimal.syntax = Syntax.new(newAnimal.refData.gender)
     newAnimal.genetics = Genetics.new(newAnimal)
     newAnimal.lantern = Lantern.new(newAnimal)
     newAnimal.needs = Needs.new(newAnimal)
     newAnimal.hunger = Hunger.new(newAnimal)
     newAnimal.mouth = Mouth.new(newAnimal)
+    newAnimal.rider = Rider.new(newAnimal)
     newAnimal.ai = AI.new(newAnimal)
     local abilities = {
         "charm",
@@ -262,6 +302,9 @@ function GuarCompanion:new(reference)
         "steal",
         "pet",
         "feed",
+        "mount",
+        "dismount",
+        "showRidingInstructions",
         "follow",
         "move",
         "wait",
@@ -310,11 +353,11 @@ end
 --- Get the animals' name
 ---@return string
 function GuarCompanion:getName()
-    return self.object.name
+    return self.reference.baseObject.name
 end
 
 function GuarCompanion:setName(newName)
-    self.object.name = newName
+    self.reference.baseObject.name = newName
 end
 
 
@@ -328,6 +371,13 @@ end
 ---@return GuarWhisperer.GuarCompanion.AttackPolicy
 function GuarCompanion:getAttackPolicy()
     return self.refData.attackPolicy
+end
+
+---Check if the companion is overencumbered and cannot move
+function GuarCompanion:isOverEncumbered()
+    local current = self.reference.mobile.encumbrance.current
+    local max = self.reference.mobile.encumbrance.base
+    return current > max
 end
 
 
@@ -400,7 +450,6 @@ function GuarCompanion:goHome(e)
             tes3.positionCell{
                 reference = self.reference,
                 position = home.position,
-                --cell = self.refData.home.cell
             }
             if e.takeMe then
                 tes3.positionCell{
@@ -408,8 +457,9 @@ function GuarCompanion:goHome(e)
                     position = home.position,
                 }
                 if ashfallInterop then ashfallInterop.unblockSleepLoss() end
+                tes3.messageBox(self:format("{Name} has taken you home to %s", tes3.getCell{ id = home.cell }))
             else
-                tes3.messageBox("%s has gone home to %s", self:getName(), tes3.getCell{ id = home.cell })
+                tes3.messageBox(self:format("{Name} has gone home to %s", tes3.getCell{ id = home.cell }))
             end
         end)
     end
@@ -420,6 +470,40 @@ function GuarCompanion:getHome()
     return self.refData.home
 end
 
+function GuarCompanion:getSyntax()
+    local syntax = Syntax.new{
+        name = self:getName(),
+        gender = self.genetics:getGender()
+    }
+    return syntax
+end
+
+---Makes the following substitutions:
+--- - `{he}`: "he", "she" or "it"
+--- - `{him}`: "him", "her" or "it"
+--- - `{name}` : the guar's name
+--- - `{baby}` : "baby " if the guar is a baby
+--- - `{guar}` : the companion type (e.g, "guar")
+--- - `{isHappy}` : the happiness status, e.g "looks happy"
+--- - `{trustsYou}` : the trust status, e.g "trusts you unconditionally"
+function GuarCompanion:format(message, ...)
+    local syntax = self:getSyntax()
+    local formatter = Formatter.new{
+        substitutions = {
+            ["he"] = function() return syntax:getHeShe() end,
+            ["him"] = function() return syntax:getHimHer() end,
+            ["his"] = function() return syntax:getHisHer() end,
+            ["male"] = function() return syntax.gender end,
+            ["name"] = function() return syntax.name end,
+            ["baby"] = function() return self.genetics:isBaby() and "baby " or "" end,
+            ["guar"] = function() return self.animalType.type end,
+            ["isHappy"] = function() return self.needs:getHappinessStatus().description end,
+            ["trustsYou"] = function() return self.needs:getTrustStatus().description end
+        }
+    }
+    return formatter:format(message, ...)
+end
+
 --[[
     position must be tes3vector3, cell must be tes3cell
     converts position to table and cell to id for serialisation
@@ -427,7 +511,7 @@ end
 function GuarCompanion:setHome(position, cell)
     local newPosition = { position.x, position.y, position.z}
     self.refData.home = { position = newPosition, cell = cell.id }
-    tes3.messageBox("Set %s's new home in %s", self:getName(), cell.id)
+    tes3.messageBox(self:format("Set {name}'s new home in %s", cell.id))
 end
 
 function GuarCompanion:isDead()
@@ -441,7 +525,7 @@ end
 function GuarCompanion:canBeSummoned()
     return (
         self:isDead() ~= true and
-        self.needs:hasSkillReqs("follow")
+        self.needs:hasTrustLevel("Wary")
     )
 end
 
@@ -461,15 +545,6 @@ function GuarCompanion:isActive()
         table.find(tes3.getActiveCells(), self.reference.cell) and
         not self:isDead() and
         self:distanceFrom(tes3.player) < 5000
-    )
-end
-
-function GuarCompanion:getMenuTitle()
-    local name = self:getName() or "This"
-    return string.format(
-        "%s is a %s%s %s. %s %s.",
-        name, self.genetics:isBaby() and "baby " or "", self.genetics:getGender(), self.animalType.type,
-        self.syntax:getHeShe(), self.needs:getHappinessStatus().description
     )
 end
 
@@ -504,27 +579,28 @@ function GuarCompanion:pet()
     tes3.messageBox(self.needs:getAffectionStatus().pettingResult(self) )
     self.ai:playAnimation("pet")
     self:takeAction(2)
-    if not self.needs:hasSkillReqs("follow") then
+    if not self.needs:hasTrustLevel("Wary") then
         self.needs:modTrust(2)
     end
 end
 
+---Generate a random refusal message
 function GuarCompanion:getRefusalMessage()
     local messages = {
-        "<name> doesn't want to do that.",
-        "<name> refuses to listen to you.",
+        "{Name} doesn't want to do that.",
+        "{Name} refuses to listen to you.",
         "Your command falls on deaf ears.",
-        "<name> ignores you.",
+        "{Name} is ignoring you.",
+        "{Name} wanders away as if {he} didn't hear you.",
     }
-    local message = table.choice(messages)
-    message = string.gsub(message, "<name>", self:getName())
+    local message = self:format(table.choice(messages))
     return message
 end
 
-
+---Open the menu to rename the guar
 function GuarCompanion:rename()
-    local label = self.genetics:isBaby() and string.format("Name your new baby %s %s", self.genetics:getGender(), self.animalType.type) or
-        string.format("Enter the new name of your %s %s:",self.genetics:getGender(), self.animalType.type)
+    local label = self.genetics:isBaby() and self:format("Name your new baby {male} {guar}") or
+        self:format("Enter the new name of your {male} {guar}:")
     local renameMenuId = tes3ui.registerID("TheGuarWhisperer_Rename")
 
     local t = {
@@ -532,11 +608,11 @@ function GuarCompanion:rename()
     }
 
     local function nameChosen()
-        local newName = Syntax.capitaliseFirst(t.name)
+        local newName = Formatter.capitaliseFirst(t.name)
         self:setName(newName)
         tes3ui.leaveMenuMode()
         tes3ui.findMenu(renameMenuId):destroy()
-        tes3.messageBox("%s has been renamed to %s", Syntax.capitaliseFirst(self.animalType.type), self:getName())
+        tes3.messageBox(self:format("{Guar} has been renamed to {name}."))
         self.ai:playAnimation("happy")
     end
 
@@ -560,7 +636,34 @@ function GuarCompanion:rename()
 end
 
 
+---@param object tes3object|tes3light|tes3misc|tes3actor
+local function canActivate(object)
+    local objectType = object.objectType
+    --only canCarry lights
+    if objectType == tes3.objectType.light then
+        return object.canCarry
+    end
+    --only activate actors outof combat
+    if object.actorFlags then
+        return not tes3.mobilePlayer.inCombat
+    end
+    --Anything with a value can be carried
+    if object.value then
+        return true
+    end
+    --Check against activator types
+    local activatorTypes = {
+        [tes3.objectType.activator] = true,
+        [tes3.objectType.container] = true,
+        [tes3.objectType.door] = true,
+    }
+    if activatorTypes[objectType] then
+        return true
+    end
+    return false
+end
 
+---@return boolean|nil doBlockActivate
 function GuarCompanion:activate()
     if not self:isActive() then
         logger:trace("not active")
@@ -578,31 +681,45 @@ function GuarCompanion:activate()
     if self.refData.triggerDialog == true then
         logger:debug("triggerDialog true, entering companion share")
         self.refData.triggerDialog = nil
+
+        timer.start{
+            duration = 1.0,
+            callback = function()
+                if self:isOverEncumbered() then
+                    tes3.messageBox(self:format("{Name} is over-encumbered."))
+                    self.ai:wait()
+                    return
+                end
+            end,
+        }
+
         return
+    end
     --Block activation if issuing a command
-    elseif common.data.skipActivate then
+    if common.data.skipActivate then
         logger:trace("skipActivate")
         common.data.skipActivate = false
-        return false
+        return true
     --Otherwise trigger custom activation
-    else
-        if self.mouth:hasCarriedItems() then
-            self.refData.commandActive = false
-            self.mouth:handOverItems()
-            self.ai:restorePreviousAI()
-        elseif self.refData.commandActive then
-            logger:trace("command is active")
-            self.refData.commandActive = false
-        else
-            if self:canTakeAction() then
-                logger:trace("showing command menu")
-                event.trigger("TheGuarWhisperer:showCommandMenu", { guar = self })
-            else
-                logger:trace("can't take action")
-            end
-        end
-        return false
     end
+
+
+    if self.mouth:hasCarriedItems() then
+        self.refData.commandActive = false
+        self.mouth:handOverItems()
+        self.ai:restorePreviousAI()
+    elseif self.refData.commandActive then
+        logger:trace("command is active")
+        self.refData.commandActive = false
+    else
+        if self:canTakeAction() then
+            logger:trace("showing command menu")
+            event.trigger("TheGuarWhisperer:showCommandMenu", { guar = self })
+        else
+            logger:trace("can't take action")
+        end
+    end
+    return true
 end
 
 return GuarCompanion

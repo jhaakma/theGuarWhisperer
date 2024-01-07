@@ -15,34 +15,48 @@ local RUN_STATES = {
 event.register("simulate", function()
     GuarCompanion.referenceManager:iterateReferences(function(_, guar)
         if guar.reference.mobile and RUN_STATES[guar.ai:getAI()] then
-            guar.reference.mobile.isRunning = true
+            if not guar.rider:isRiding() then
+                guar.reference.mobile.isRunning = true
+            end
         end
     end)
 end)
 
 --Teleport to player when going back outside
 ---@param e cellChangedEventData
-local function checkCellChanged(e)
+event.register("cellChanged", function(e)
     if not e.cell.isInterior then
-        logger:debug("Cell changed to exterior, teleporting distance companions")
-        for _, guar in ipairs(GuarCompanion.getAll()) do
-            local doTeleport = guar.ai:getAI() == "following"
-                and not guar:isDead()
-                and guar:distanceFrom(tes3.player) > common.config.mcm.teleportDistance
-            if doTeleport then
-                logger:debug("Cell change teleport")
-                if e.previousCell.isInterior then
-                    --If transitioning from inside, teleport in front of player
-                    guar.ai:teleportToPlayer(500)
+        timer.delayOneFrame(function()
+            local guars = GuarCompanion.getAll()
+            logger:debug("Cell changed to exterior, teleporting %s distance companions", #guars)
+            for _, guar in ipairs(GuarCompanion.getAll()) do
+                local isFollowing = guar.ai:getAI() == "following"
+                    and not guar.rider:isRiding()
+
+                local doTeleport = isFollowing
+                    and not guar:isDead()
+                    and guar:distanceFrom(tes3.player) > common.config.mcm.teleportDistance
+
+                if doTeleport then
+                    logger:debug("Cell change teleport")
+                    if e.previousCell.isInterior then
+                        --If transitioning from inside, teleport in front of player
+                        guar.ai:teleportToPlayer(500)
+                    else
+                        --If transitioning from outside, trigger regular close distance teleport
+                        guar.ai:closeTheDistanceTeleport()
+                    end
                 else
-                    --If transitioning from outside, trigger regular close distance teleport
-                    guar.ai:closeTheDistanceTeleport()
+                    logger:debug("Not teleporting %s. distance: %s, ai: %s, isDead: %s",
+                        guar:getName(),
+                        guar:distanceFrom(tes3.player),
+                        guar.ai:getAI(),
+                        guar:isDead())
                 end
             end
-        end
+        end)
     end
-end
-event.register("cellChanged", checkCellChanged )
+end)
 
 local ACTION = {
     undecided = 0,
@@ -117,12 +131,14 @@ event.register("determinedAction", function(e)
 
         --Stop combat if too far away
         local targetTooFar = target and target.position:distance(tes3.player.position) > 2000
+
+        ---@type mwseSafeObjectHandle
         local safeTarget = tes3.makeSafeObjectHandle(target)
         if targetTooFar then
             logger:debug("Enemy too far away from player, returning to player")
             timer.delayOneFrame(function()
                 if not guar:isValid() then return end
-                if not ( safeTarget and safeTarget:isValid()) then return end
+                if not ( safeTarget and safeTarget:valid()) then return end
                 if target then -- and target.actionData.aiBehaviorState == tes3.aiBehaviorState.flee then
                     logger:warn("target aiBehaviorState is %d = %s", target.actionData.aiBehaviorState, table.find(tes3.aiBehaviorState, target.actionData.aiBehaviorState))
                     logger:debug("Stopping target combat")
@@ -166,7 +182,7 @@ end)
 
 event.register("loaded", function()
     timer.start{
-        duration = 1,
+        duration = 5,
         iterations = -1,
         type = timer.simulate,
         callback = function()

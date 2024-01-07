@@ -60,7 +60,7 @@ function Needs:modHunger(amount)
     self:setHunger(math.clamp(self:getHunger() + amount, 0, 100))
     local newMood = self:getMood("hunger")
     if newMood ~= previousMood then
-        tes3.messageBox("%s is %s.", self.guar:getName(), newMood.description)
+        tes3.messageBox(self.guar:format("{Name} is %s.", newMood.description))
     end
     tes3ui.refreshTooltip()
 end
@@ -97,11 +97,9 @@ function Needs:modTrust(amount)
 
     for _, trustData in ipairs(moodConfig.trust) do
         if previousTrust < trustData.minValue and afterTrust > trustData.minValue then
-            local message = string.format("%s %s. ",
-                self.guar:getName(), trustData.description)
+            local message = self.guar:format("{Name} {trustsYou}. ")
             if trustData.skillDescription then
-                message = message .. string.format("%s %s",
-                    self.guar.syntax:getHeShe(), trustData.skillDescription)
+                message = message .. self.guar:format("{He} %s", trustData.skillDescription)
             end
             timer.delayOneFrame(function()
                 tes3.messageBox{ message = message, buttons = {"Okay"} }
@@ -215,13 +213,13 @@ end
 
 function Needs:updateHappiness()
     local healthRatio = self.guar.reference.mobile.health.current / self.guar.reference.mobile.health.base
-    local hungerEffect = math.remap(self:getHunger(), 0, 100, -15, 30)
-    local comfortEffect = math.remap(healthRatio, 0, 1.0, -100, 0)
-    local affectionEffect = math.remap(self:getAffection(), 0, 100, -10, 40)
-    local play = math.remap(self:getPlay(), 0, 100, 0, 15)
+    local comfort = math.remap(healthRatio, 0, 1.0, -80, 0)
+    local hungerEffect = math.remap(self:getHunger(), 100, 0, -25, 30)
+    local affection = math.remap(self:getAffection(), 0, 100, -20, 40)
+    local play = math.remap(self:getPlay(), 0, 100, -20, 20)
     local trust = math.remap(self:getTrust(), 0, 100, 0, 20)
 
-    local newHappiness = hungerEffect + comfortEffect + affectionEffect + play + trust
+    local newHappiness = hungerEffect + comfort + affection + play + trust
     newHappiness = math.clamp(newHappiness, 0, 100)
 
     self:setHappiness(newHappiness)
@@ -232,9 +230,14 @@ end
 
 ---------------------------------------------------------
 
-function Needs:hasSkillReqs(skill)
-    return self:getTrust() > moodConfig.skillRequirements[skill]
+---@param trustId GuarWhisperer.Trust.id
+function Needs:hasTrustLevel(trustId)
+    local trustConfig = moodConfig.trustMap[trustId]
+    if trustConfig then
+        return self:getTrust() >= trustConfig.minValue
+    end
 end
+
 
 function Needs:updateNeeds()
     --get the time since last updated

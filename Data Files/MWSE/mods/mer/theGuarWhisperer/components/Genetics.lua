@@ -14,6 +14,7 @@ local Controls = require("mer.theGuarWhisperer.services.Controls")
 ---@field birthTime number
 ---@field gender GuarWhisperer.Gender
 ---@field trust number
+---@field type string #Animal type, e.g "guar", maps to AnimalType config
 
 ---@class GuarWhisperer.Genetics.GuarCompanion : GuarWhisperer.GuarCompanion
 ---@field refData GuarWhisperer.Genetics.GuarCompanion.refData
@@ -60,6 +61,7 @@ function Genetics:getBirthTime()
 end
 
 --Averages the attributes of mom and dad and adds some random mutation
+--Uses the value in between the base and current values of each parent
 --Stores them on refData so they can be scaled down during adolescence
 ---@param mom GuarWhisperer.Genetics.GuarCompanion
 ---@param dad GuarWhisperer.Genetics.GuarCompanion
@@ -67,10 +69,20 @@ function Genetics:inheritGenes(mom, dad)
     for _, attribute in pairs(tes3.attribute) do
         local attributeName = table.find(tes3.attribute, attribute)
         --get base values of parents
-        local momVal = mom.stats:getBaseAttributeValue(attributeName)
-        local dadVal = dad.stats:getBaseAttributeValue(attributeName)
+        local momBase = mom.stats:getBaseAttributeValue(attributeName)
+        local dadBase = dad.stats:getBaseAttributeValue(attributeName)
+
+        --get current values of parents
+        local momCurrent = mom.stats:getAttribute(attributeName).baseRaw
+        local dadCurrent = dad.stats:getAttribute(attributeName).baseRaw
+
+        --Get the value in between base and current
+        local momVal = (momCurrent + momBase) / 2
+        local dadVal = (dadCurrent + dadBase) / 2
+
         --find the average between them
         local average = (momVal + dadVal) / 2
+
         --mutation range is 1/10th of average, so higher values = more mutation
         local mutationRange = math.clamp(average * 0.1, 5, 50)
         local mutation = math.lerp(-mutationRange, mutationRange, math.random())
@@ -90,7 +102,6 @@ function Genetics:randomiseGenes()
 end
 
 function Genetics.getWhiteBabyChance()
-    local chanceOutOf = 50
     local merlordESPs = {
         "Ashfall.esp",
         "BardicInspiration.esp",
@@ -101,50 +112,72 @@ function Genetics.getWhiteBabyChance()
         "theMidnightOil.ESP"
     }
     local merlordMWSEs = {
+        "accidentalTheftProtection",
         "backstab",
         "BedBuddies",
+        "beenThere",
         "BookWorm",
         "class-description",
+        "drip",
+        "dynamicBookSizeAdjuster",
+        "fishing",
+        "hiddenRobeArmor",
+        "itemBrowser",
+        "joyOfPainting",
+        "justDropIt",
         "KillCommand",
+        "lessAggressiveCreatures",
         "MarksmanRebalanced",
         "Mining",
         "MiscMates",
         "NoCombatMenu",
+        "petTheDamnScrib",
         "QuickLoadouts",
         "RealisticRepair",
+        "skoomaesthesia",
         "StartingEquipment",
-        "lessAggressiveCreatures",
-        "accidentalTheftProtection"
     }
+
+    local totalMods = #merlordESPs + #merlordMWSEs
+    local modsActive = 0
     for _, esp in ipairs(merlordESPs) do
         if tes3.isModActive(esp) then
-            chanceOutOf = chanceOutOf - 1
+            modsActive = modsActive + 1
         end
     end
     for _, mod in ipairs(merlordMWSEs) do
         if tes3.getFileExists(string.format("MWSE\\mods\\mer\\%s\\main.lua", mod)) then
-            chanceOutOf = chanceOutOf - 1
+            modsActive = modsActive + 1
         end
     end
-    local roll = math.random(chanceOutOf)
-    return roll == 1
+    local CHANCE_NO_MODS = 1
+    local CHANCE_ALL_MODS = 20
+    local chance = math.remap(modsActive, 0, totalMods, CHANCE_NO_MODS, CHANCE_ALL_MODS)
+    local roll = math.random(100)
+    local result = roll < chance
+    logger:debug("White baby chance: %s/100. Rolled %s. Result: %s", chance, roll, result)
+    return result
 end
 
+---Check if this guar can conceive a baby
 function Genetics:getCanConceive()
     if not self.guar.animalType.breedable then return false end
     if not ( self.guar.refData.gender == "female" ) then return false end
     if self:isBaby() then return false end
     if not self.guar.mobile.hasFreeAction then return false end
     if self.guar.needs:getTrust() < moodConfig.skillRequirements.breed then return false end
+
     if self.guar.refData.lastBirthed then
         local now = common.util.getHoursPassed()
         local hoursSinceLastBirth = now - self.guar.refData.lastBirthed
         local enoughTimePassed = hoursSinceLastBirth > self.guar.animalType.birthIntervalHours
         if not enoughTimePassed then return false end
     end
+
     return true
 end
 
+---Check if this guar can be impregnated by another guar
 ---@param guar GuarWhisperer.Genetics.GuarCompanion|GuarWhisperer.GuarCompanion
 function Genetics:canBeImpregnatedBy(guar)
     if not guar.animalType.breedable then return false end
@@ -171,8 +204,9 @@ function Genetics:breed()
     end)
 
     if #partnerList > 0 then
+        ---@param partner GuarWhisperer.Genetics.GuarCompanion
         local function doBreed(partner)
-            partner:playAnimation("pet")
+            partner.ai:playAnimation("pet")
             local baby
             timer.start{
                 type = timer.real,
@@ -181,7 +215,12 @@ function Genetics:breed()
                     if not self.guar:isValid() then return end
                     self.guar.refData.lastBirthed  = common.util.getHoursPassed()
                     local babyObject = common.createCreatureCopy(self.guar.reference.baseObject)
-                    babyObject.name = string.format("%s Jr", self.guar:getName())
+
+                    if Genetics.getWhiteBabyChance() then
+                        logger:debug("White baby chance passed, making white baby")
+                        babyObject.mesh = "mer_tgw\\guar_tame_w.nif"
+                    end
+                    babyObject.name = self.guar:format("{Name} Jr")
                     local babyRef = tes3.createReference{
                         object = babyObject,
                         position = self.guar.reference.position,
@@ -195,14 +234,17 @@ function Genetics:breed()
                     }
                     timer.delayOneFrame(function()
                         if not self.guar:isValid() then return end
-                        self.guar.initialiseRefData(babyRef, self.guar.animalType)
+                        self.guar.initialiseRefData(babyRef, self.guar.refData.type)
                         baby = self.guar:new(babyRef)
                         if baby then
                             baby.genetics:setIsBaby(true)
                             baby.needs:setTrust(self.guar.animalType.trust.babyLevel)
                             baby.genetics:setBirthTime()
-                            --baby:inheritGenes(self, partner)
+                            baby.genetics:inheritGenes(self.guar, partner)
                             baby.genetics:updateGrowth()
+                            baby.needs:setHunger(10)
+                            baby.needs:setAffection(90)
+                            baby.needs:setPlay(90)
                             baby:setAttackPolicy("passive")
                             baby.ai:wander()
                             babyRef.mobile.fight = 0
@@ -223,11 +265,11 @@ function Genetics:breed()
         end
         local buttons = {}
         local i = 1
-        ---@param partner GuarWhisperer.GuarCompanion
+        ---@param partner GuarWhisperer.Genetics.GuarCompanion
         for _, partner in ipairs(partnerList) do
             table.insert(buttons,
                 {
-                    text = string.format("%d. %s", i, partner:getName() ),
+                    text = partner:format("%d. {Name}", i),
                     callback = function()
                         doBreed(partner)
                     end
@@ -237,7 +279,7 @@ function Genetics:breed()
         table.insert( buttons, { text = "Cancel"})
 
         tes3ui.showMessageMenu{
-            message = string.format("Which partner would you like to breed %s with?", self.guar:getName() ),
+            message = self.guar:format("Which partner would you like to breed {name} with?"),
             buttons = buttons
         }
     else

@@ -71,7 +71,7 @@ end)
 ---@param e { guar: GuarWhisperer.GuarCompanion}
 event.register("TheGuarWhisperer:showCommandMenu", function(e)
     logger:debug("activating menu")
-    if hasModifierPressed() then
+    if hasModifierPressed() and e.guar.pack:hasPack() then
         e.guar.pack:takeItemLookingAt()
     else
         commandMenu:showCommandMenu(e.guar)

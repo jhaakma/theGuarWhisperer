@@ -28,33 +28,33 @@ end
 -- Detect if the reference is a valid herbalism subject.
 function Harvest.isHerb(ref)
     if not ref then
-        logger:debug("isHerb: ref is nil")
+        logger:trace("isHerb: ref is nil")
         return false
     end
 
     if not ref.object.organic then
-        logger:debug("isHerb: ref is not organic")
+        logger:trace("isHerb: ref is not organic")
         return false
     end
 
     local id = ref.baseObject.id:lower()
 
     if config.blacklist[id] then
-        logger:debug("isHerb: ref is blacklisted")
+        logger:trace("isHerb: ref is blacklisted")
         return false
     end
 
     if config.whitelist[id] then
-        logger:debug("isHerb: ref is whitelisted, is a herb")
+        logger:trace("isHerb: ref is whitelisted, is a herb")
         return true
     end
 
     if ref.object.script then
-        logger:debug("isHerb: ref has a script")
+        logger:trace("isHerb: ref has a script")
         return false
     end
 
-    logger:debug("isHerb: ref is a herb")
+    logger:trace("isHerb: ref is a herb")
     return true
 end
 

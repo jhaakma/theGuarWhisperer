@@ -158,7 +158,7 @@ this.convertConfigs = {
         statOverrides = {
             attributes = {
                 strength = 50,
-                speed = 60,
+                speed = 70,
             },
         }
     },

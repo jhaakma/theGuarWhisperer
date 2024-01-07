@@ -2,6 +2,7 @@ local Ability = require("mer.theGuarWhisperer.abilities.Ability")
 local Action = require("mer.theGuarWhisperer.abilities.Action")
 local Harvest = require("mer.theGuarWhisperer.abilities.harvest")
 local Fetch = require("mer.theGuarWhisperer.abilities.fetch")
+local Rider = require("mer.theGuarWhisperer.components.Rider")
 local Charm = require("mer.theGuarWhisperer.abilities.charm")
 local common = require("mer.theGuarWhisperer.common")
 local logger = common.createLogger("Abilities")
@@ -19,7 +20,7 @@ local abilities = {
         command = function(e)
             local guar = e.activeCompanion
             local target = e.targetData.reference
-            if guar.ai:attemptCommand(80, 90) then
+            if guar.ai:attemptCommand(60, 90) then
                 Action.moveToAction{
                     target = target,
                     guar = guar,
@@ -32,7 +33,7 @@ local abilities = {
                             duration = 1.0,
                             callback = function()
                                 if guar:isValid() then
-                                    logger:info("restorePreviousAI")
+                                    logger:debug("restorePreviousAI")
                                     guar.ai:restorePreviousAI()
                                 end
                             end
@@ -44,13 +45,14 @@ local abilities = {
         requirements = function(e)
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
-            if not (e.targetData and e.targetData.reference) then return false end
-            local targetObj = e.targetData.reference.baseObject or
-                e.targetData.reference.object
+            local target = e.targetData and e.targetData.reference
+            if not target then return false end
+            local inCombat = target.mobile
+                and target.mobile.inCombat
 
-            return targetObj and
-                targetObj.objectType == tes3.objectType.npc
-                and guar.needs:hasSkillReqs("charm")
+            return  target.baseObject.objectType == tes3.objectType.npc
+                and guar.needs:hasTrustLevel("Familiar")
+                and not inCombat
         end,
     },
 
@@ -64,7 +66,7 @@ local abilities = {
         command = function(e)
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
-            if guar.ai:attemptCommand(50, 80) then
+            if guar.ai:attemptCommand(40, 80) then
                 guar:setAttackPolicy("defend")
                 guar.ai:attack(e.targetData.reference)
             end
@@ -94,7 +96,7 @@ local abilities = {
                 return false
             end
             --Has prerequisites for attack command
-            if not guar.needs:hasSkillReqs("attack") then
+            if not guar.needs:hasTrustLevel("Wary")then
                 return false
             end
             --Not passive
@@ -116,7 +118,7 @@ local abilities = {
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
             local target = e.targetData.reference
-            if guar.ai:attemptCommand(40, 80) then
+            if guar.ai:attemptCommand(10, 50) then
                 Action.moveToAction{
                     target = target,
                     guar = guar,
@@ -124,13 +126,13 @@ local abilities = {
                     playGroup = "idle6",
                     actionDuration = 1.0,
                     afterAction = function(_)
-                        logger:info("eatFromWorld")
+                        logger:debug("eatFromWorld")
                         guar.mouth:eatFromWorld(target)
                         timer.start{
                             duration = 1.0,
                             callback = function()
                                 if guar:isValid() then
-                                    logger:info("restorePreviousAI")
+                                    logger:debug("restorePreviousAI")
                                     guar.ai:restorePreviousAI()
                                 end
                             end
@@ -146,7 +148,7 @@ local abilities = {
                 and (not guar.mouth:hasCarriedItems())
                 and e.targetData.reference ~= nil
                 and guar:canEat(e.targetData.reference)
-                and guar.needs:hasSkillReqs("eat")
+                and guar.needs:hasTrustLevel("Wary")
         end,
         activationDistance = 300,
     },
@@ -166,7 +168,7 @@ local abilities = {
                 logger:error("Harvest command: No target")
                 return
             end
-            if guar.ai:attemptCommand(40, 80) then
+            if guar.ai:attemptCommand(30, 70) then
                 Action.moveToAction{
                     target = target,
                     guar = guar,
@@ -174,17 +176,17 @@ local abilities = {
                     playGroup = "idle6",
                     actionDuration = 1.0,
                     afterAction = function(_)
-                        logger:info("harvest %s", target.id)
+                        logger:debug("harvest %s", target.id)
                         local success = guar.mouth:harvestItem(target, true)
                         if not success then
-                            tes3.messageBox("%s wasn't able to harvest anything.", guar:getName())
+                            tes3.messageBox(guar:format("{Name} wasn't able to harvest anything."))
                         end
                         guar.stats:progressLevel(guar.animalType.lvl.fetchProgress)
                         timer.start{
                             duration = 1.0,
                             callback = function()
                                 if guar:isValid() then
-                                    logger:info("returning")
+                                    logger:debug("returning")
                                     guar.ai:returnTo()
                                 end
                             end
@@ -200,7 +202,7 @@ local abilities = {
             return guar:isDead() ~= true
                 and Harvest.canHarvest(reference)
                 and tes3.hasOwnershipAccess { target = reference }
-                and guar.needs:hasSkillReqs("fetch")
+                and guar.needs:hasTrustLevel("Familiar")
         end,
         activationDistance = 400,
     },
@@ -216,28 +218,8 @@ local abilities = {
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
             local target = e.targetData.reference
-            if guar.ai:attemptCommand(50, 80) then
-                Action.moveToAction{
-                    target = target,
-                    guar = guar,
-                    activationDistance = 400,
-                    playGroup = "idle6",
-                    actionDuration = 1.0,
-                    afterAction = function(_)
-                        logger:info("fetch")
-                        guar.mouth:pickUpItem(target)
-                        guar.stats:progressLevel(guar.animalType.lvl.fetchProgress)
-                        timer.start{
-                            duration = 1.0,
-                            callback = function()
-                                if guar:isValid() then
-                                    logger:info("returning")
-                                    guar.ai:returnTo()
-                                end
-                            end
-                        }
-                    end
-                }
+            if guar.ai:attemptCommand(40, 80) then
+                Fetch.fetch(guar, target)
             end
         end,
         requirements = function(e)
@@ -247,7 +229,7 @@ local abilities = {
             return Fetch.canFetch(reference)
                 and (not guar.mouth:hasCarriedItems())
                 and tes3.hasOwnershipAccess { target = reference }
-                and guar.needs:hasSkillReqs("fetch")
+                and guar.needs:hasTrustLevel("Familiar")
         end,
         activationDistance = 100,
     },
@@ -262,7 +244,7 @@ local abilities = {
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
             local target = e.targetData.reference
-            if guar.ai:attemptCommand(60, 90) then
+            if guar.ai:attemptCommand(50, 90) then
                 Action.moveToAction{
                     target = target,
                     guar = guar,
@@ -270,14 +252,14 @@ local abilities = {
                     playGroup = "idle6",
                     actionDuration = 1.0,
                     afterAction = function(_)
-                        logger:info("fetch")
+                        logger:debug("fetch")
                         guar.mouth:pickUpItem(target)
                         guar.stats:progressLevel(guar.animalType.lvl.fetchProgress)
                         timer.start{
                             duration = 1.0,
                             callback = function()
                                 if guar:isValid() then
-                                    logger:info("returning")
+                                    logger:debug("returning")
                                     guar.ai:returnTo()
                                 end
                             end
@@ -293,7 +275,7 @@ local abilities = {
             return Fetch.canFetch(reference)
                 and (not guar.mouth:hasCarriedItems())
                 and (not tes3.hasOwnershipAccess { target = e.targetData.reference })
-                and guar.needs:hasSkillReqs("fetch")
+                and guar.needs:hasTrustLevel("Familiar")
         end,
         doSteal = true,
         activationDistance = 100,
@@ -316,7 +298,6 @@ local abilities = {
         requirements = function(e)
             return e.inMenu
         end,
-        blockActivateDuration = 1.5
     },
 
     --feed
@@ -334,7 +315,6 @@ local abilities = {
         requirements = function(e)
             return e.inMenu
         end,
-        blockActivateDuration = 1.5
     },
     {
         id = "follow",
@@ -345,7 +325,14 @@ local abilities = {
         command = function(e)
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
-            if guar.ai:attemptCommand(50, 70) then
+
+            if guar:isOverEncumbered() then
+                tes3.messageBox(guar:format("{Name} is over-encumbered and cannot move."))
+                guar.ai:wait()
+                return
+            end
+
+            if guar.ai:attemptCommand(40, 70) then
                 tes3.messageBox("Following")
                 guar.ai:returnTo()
             end
@@ -355,7 +342,8 @@ local abilities = {
             local guar = e.activeCompanion
             return (e.targetData.intersection == nil or e.targetData.reference)
                 and guar.ai:getAI() ~= "following"
-                and guar.needs:hasSkillReqs("follow")
+                and guar.needs:hasTrustLevel("Wary")
+                and ( Rider.getRefBeingRidden() ~= e.activeCompanion.reference)
         end
     },
     {
@@ -367,8 +355,15 @@ local abilities = {
         command = function(e)
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
-            if guar.ai:attemptCommand(50, 70) then
-                tes3.messageBox("%s moving to location", guar:getName())
+
+            if guar:isOverEncumbered() then
+                tes3.messageBox(guar:format("{Name} is over-encumbered and cannot move."))
+                guar.ai:wait()
+                return
+            end
+
+            if guar.ai:attemptCommand(40, 70) then
+                tes3.messageBox(guar:format("{Name} moving to location"))
                 guar.ai:moveTo(e.targetData.intersection)
             end
         end,
@@ -377,7 +372,7 @@ local abilities = {
             local guar = e.activeCompanion
             return e.targetData.intersection ~= nil
                 and (not e.targetData.reference)
-                and guar.needs:hasSkillReqs("follow")
+                and guar.needs:hasTrustLevel("Wary")
         end
     },
 
@@ -390,7 +385,7 @@ local abilities = {
         command = function(e)
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
-            if guar.ai:attemptCommand(30, 60) then
+            if guar.ai:attemptCommand(20, 60) then
                 tes3.messageBox("Waiting")
                 guar.ai:wait()
             end
@@ -398,8 +393,9 @@ local abilities = {
         requirements = function(e)
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
-            return (e.targetData.intersection == nil or e.targetData.reference)
-                and guar.ai:getAI() ~= "waiting"
+            return --(e.targetData.intersection == nil or e.targetData.reference)
+                --and
+                guar.ai:getAI() ~= "waiting"
         end
     },
 
@@ -414,14 +410,22 @@ local abilities = {
         command = function(e)
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
+
+            if guar:isOverEncumbered() then
+                tes3.messageBox(guar:format("{Name} is over-encumbered and cannot move."))
+                guar.ai:wait()
+                return
+            end
+
             tes3.messageBox("Wandering")
             guar.ai:wander()
         end,
         requirements = function(e)
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
-            return (e.targetData.intersection == nil or e.targetData.reference)
-                and guar.ai:getAI() ~= "wandering"
+            return --(e.targetData.intersection == nil or e.targetData.reference)
+                --and
+                guar.ai:getAI() ~= "wandering"
         end
     },
     {
@@ -436,17 +440,27 @@ local abilities = {
             local guar = e.activeCompanion
             timer.delayOneFrame(function()
                 if not guar:isValid() then return end
+                logger:debug("letMePass - disabling collision")
                 tes3.positionCell {
                     reference = guar.reference,
                     position = tes3.player.position,
                     cell = tes3.player.cell
+                }
+                guar.mobile.mobToMobCollision = false
+                timer.start{
+                    duration = 1.0,
+                    callback = function()
+                        if guar:isValid() then
+                            logger:debug("letMePass - enabling collision")
+                            guar.mobile.mobToMobCollision = true
+                        end
+                    end
                 }
             end)
         end,
         requirements = function(e)
             return e.inMenu
         end,
-        blockActivateDuration = 0.1,
     },
 
     --priority 5: uncommon movement commands
@@ -466,8 +480,8 @@ local abilities = {
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
             return e.inMenu and guar.pack:canEquipPack()
+
         end,
-        blockActivateDuration = 0.1,
     },
     {
         id = "unequipPack",
@@ -485,7 +499,6 @@ local abilities = {
             local guar = e.activeCompanion
             return (e.inMenu and guar.pack:hasPack())
         end,
-        blockActivateDuration = 0.1,
     },
 
     {
@@ -498,7 +511,7 @@ local abilities = {
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
             guar:setAttackPolicy("passive")
-            tes3.messageBox("%s will no longer engage in combat.", guar:getName())
+            tes3.messageBox(guar:format("{Name} will no longer engage in combat."))
         end,
         requirements = function(e)
             ---@type GuarWhisperer.GuarCompanion
@@ -517,7 +530,7 @@ local abilities = {
             local guar = e.activeCompanion
             if guar.ai:attemptCommand(40, 60) then
                 guar:setAttackPolicy("defend")
-                tes3.messageBox("%s will now defend you in battle.", guar:getName())
+                tes3.messageBox(guar:format("{Name} will now defend you in battle."))
             end
         end,
         requirements = function(e)
@@ -548,7 +561,6 @@ local abilities = {
             return e.inMenu
                 and guar.genetics:getCanConceive()
         end,
-        blockActivateDuration = 1.0,
     },
     {
         id = "rename",
@@ -568,7 +580,6 @@ local abilities = {
             local guar = e.activeCompanion
             return e.inMenu
         end,
-        blockActivateDuration = 0.1,
     },
     {
         id = "getStatus",
@@ -586,7 +597,6 @@ local abilities = {
             local guar = e.activeCompanion
             return e.inMenu
         end,
-        blockActivateDuration = 0.1,
     },
 
     {
@@ -594,8 +604,7 @@ local abilities = {
         label = function(e)
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
-            return string.format("Go home (%s)",
-                tes3.getCell { id = guar.refData.home.cell })
+            return string.format("Go home (%s)", tes3.getCell { id = guar.refData.home.cell })
         end,
         description = "Send your guar back to their home location.",
         command = function(e)
@@ -611,10 +620,10 @@ local abilities = {
             return (
                 e.inMenu and
                 guar:getHome() and
-                guar.needs:hasSkillReqs("follow")
+                guar.needs:hasTrustLevel("Wary")
+                and (not guar.rider:isRiding())
             )
         end,
-        blockActivateDuration = 0.1,
     },
 
     {
@@ -640,10 +649,9 @@ local abilities = {
             local guar = e.activeCompanion
             return e.inMenu
                 and guar:getHome()
-                and guar.needs:hasSkillReqs("follow")
+                and guar.needs:hasTrustLevel("Wary")
                 and not guar.genetics:isBaby()
         end,
-        blockActivateDuration = 0.1,
     },
 
     {
@@ -665,12 +673,13 @@ local abilities = {
         requirements = function(e)
             ---@type GuarWhisperer.GuarCompanion
             local guar = e.activeCompanion
-            return (e.inMenu and guar.needs:hasSkillReqs("follow"))
+            return (e.inMenu and guar.needs:hasTrustLevel("Wary"))
         end,
-        blockActivateDuration = 0.1,
     },
 }
 
 for _, data in ipairs(abilities) do
     Ability.register(data)
 end
+
+require("mer.theGuarWhisperer.abilities.ride")

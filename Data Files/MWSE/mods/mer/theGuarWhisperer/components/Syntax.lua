@@ -2,65 +2,63 @@
 
 
 ---@class GuarWhisperer.Syntax
----@field gender GuarWhisperer.Gender
+---@field name string The name of the guar
+---@field gender GuarWhisperer.Gender The gender of the guar
+---@field substitutions table<string, function> A table of substitutions to make when formatting a string
 local Syntax = {}
 
----@param gender GuarWhisperer.Gender
+---@param e {name: string, gender: GuarWhisperer.Gender}
 ---@return GuarWhisperer.Syntax
-function Syntax.new(gender)
+function Syntax.new(e)
     local self = setmetatable({}, { __index = Syntax })
-    self.gender = gender or "none"
+    self.gender = e.gender or ""
+    self.name = e.name
+    self.substitutions = {}
     return self
-end
-
---- Returns the provided string with the first letter capitalised
-function Syntax.capitaliseFirst(str)
-    return str:gsub("^%l", string.upper)
 end
 
 ---Returns the string "He", "She" or "It",
 --- depending on the configured gender.
----@param lower boolean? if you want the string to be lowercase, otherwise the first letter will be capitalised
----@return "He"| "She" | "It" | "he" | "she" | "it"
-function Syntax:getHeShe(lower)
+---@return "he" | "she" | "it"
+function Syntax:getHeShe()
     local map = {
-        male = "He",
-        female = "She",
-        none = "It"
+        male = "he",
+        female = "she",
+        none = "it"
     }
     local name =  map[self.gender] or map.none
-    if lower then name = string.lower(name) end
     return name
 end
 
 ---Returns the string "Him", "Her" or "It",
 --- depending on the configured gender.
----@param lower boolean? if you want the string to be lowercase, otherwise the first letter will be capitalised
----@return "Him"| "Her" | "It" | "him" | "her" | "it"
-function Syntax:getHimHer(lower)
+---@return "him" | "her" | "it"
+function Syntax:getHimHer()
     local map = {
-        male = "Him",
-        female = "Her",
-        none = "It"
+        male = "him",
+        female = "her",
+        none = "it"
     }
     local name =  map[self.gender] or map.none
-    if lower then name = string.lower(name) end
     return name
 end
 
 ---Returns the string "His", "Her" or "Its",
 --- depending on the configured gender.
----@param lower boolean? if you want the string to be lowercase, otherwise the first letter will be capitalised
----@return "His"| "Her" | "Its" | "his" | "her" | "its"
-function Syntax:getHisHer(lower)
+---@return "his" | "her" | "its"
+function Syntax:getHisHer()
     local map = {
-        male = "His",
-        female = "Her",
-        none = "Its"
+        male = "his",
+        female = "her",
+        none = "its"
     }
     local name =  map[self.gender] or map.none
-    if lower then name = string.lower(name) end
     return name
 end
+
+function Syntax:getMaleFemale()
+    return self.gender
+end
+
 
 return Syntax

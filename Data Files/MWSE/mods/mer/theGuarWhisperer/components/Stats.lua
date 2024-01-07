@@ -11,31 +11,25 @@ local logger = common.createLogger("Stats")
 ---| '"speed"'
 ---| '"luck"'
 
----@type table<GuarWhisperer.Stats.AttributeName, {increasePerLevel: number, inverseScale: boolean}>
+---@type table<GuarWhisperer.Stats.AttributeName, {increasePerLevel: number, inverseScale: boolean?}>
 local attributeScaling = {
     strength = {
         increasePerLevel = 5,
-        inverseScale = false,
     },
     agility = {
         increasePerLevel = 1,
-        inverseScale = false,
     },
     endurance = {
         increasePerLevel = 1,
-        inverseScale = false,
     },
     intelligence = {
         increasePerLevel = 1,
-        inverseScale = false,
     },
     willpower = {
         increasePerLevel = 1,
-        inverseScale = false,
     },
     personality = {
         increasePerLevel = 1,
-        inverseScale = false,
     },
     speed = {
         increasePerLevel = 0,
@@ -43,7 +37,6 @@ local attributeScaling = {
     },
     luck = {
         increasePerLevel = 0,
-        inverseScale = false,
     },
 }
 
@@ -181,9 +174,8 @@ function Stats:determineAttributes()
     local scale = self.guar.reference.scale
     for attribute, config in pairs(attributeScaling) do
         local levelEffect = (level-1) * config.increasePerLevel
-        local scaleEffect = config.inverseScale
-            and (1 / scale)
-            or scale
+        local scaleEffect = (config.inverseScale == true)
+            and (1 / scale) or scale
         local baseValue = self:getBaseAttributeValue(attribute)
         local newValue = math.floor((baseValue + levelEffect) * scaleEffect)
         self:setAttribute(attribute, newValue)
@@ -222,8 +214,7 @@ function Stats:levelUp()
     self:determineHealth()
     self:determineAttack()
     tes3.messageBox{
-        message = string.format("%s is now Level %s", self.guar:getName(), newLevel),
-        --buttons = { "Okay" }
+        message = self.guar:format("{Name} is now Level %s", newLevel)
     }
 end
 
